@@ -1,5 +1,6 @@
 import numpy as np
 
-Heads = np.loadtxt("InputFolder/initial_heads.txt")
+h_field = np.loadtxt("InputFolder/initial_heads.txt")
+k_field = np.loadtxt("InputFolder/k_field.txt")
 
-print(Heads)
+print(h_field)
