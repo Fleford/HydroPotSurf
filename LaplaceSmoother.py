@@ -25,38 +25,44 @@ def shift_matrix_sum(matrix):
 
 def laplace_smooth(h_matrix, k_matrix):
     # Performs one iteration of the Laplace smoothing operation
+    k_matrix = np.absolute(k_matrix)
     hk_matrix = h_matrix * k_matrix
     # When dividing by zero, a zero is returned
     new_hk_matrix = np.divide(shift_matrix_sum(hk_matrix), shift_matrix_sum(k_matrix),
-                     out=np.zeros_like(shift_matrix_sum(hk_matrix)), where=shift_matrix_sum(k_matrix) != 0)
+                              out=np.zeros_like(shift_matrix_sum(hk_matrix)), where=shift_matrix_sum(k_matrix) != 0)
     # # Zero out regions with zero hk
     new_hk_matrix = np.divide((new_hk_matrix * k_matrix), k_matrix,
-                     out=np.zeros_like(new_hk_matrix * hk_matrix), where=k_matrix != 0)
+                              out=np.zeros_like(new_hk_matrix * hk_matrix), where=k_matrix != 0)
     return new_hk_matrix
 
 
 def laplace_smooth_iter(h_matrix, k_matrix, iterations):
     # Performs a number of iterations of Laplace smoothing
+    h_const = h_matrix
     for runs in range(iterations):
-        h_matrix = laplace_smooth(h_matrix, k_matrix)
+        # Make masks for constant heads
+        zero_at_const_h = np.ma.masked_equal(h_const, 0).mask * 1
+        one_at_const_h = np.ma.masked_not_equal(h_const, 0).mask * 1
+        # Perform smoothing
+        new_h_matrix = laplace_smooth(h_matrix, k_matrix)
+        # Apply constants
+        new_h_matrix = zero_at_const_h * new_h_matrix + one_at_const_h * h_const
+        # Zero out const heads on zero k
+        new_h_matrix = np.divide((new_h_matrix * k_matrix), k_matrix,
+                                 out=np.zeros_like(new_h_matrix * k_matrix), where=k_matrix != 0)
+        # Update matrix
+        h_matrix = new_h_matrix
     return h_matrix
 
 
 h_field = np.loadtxt("InputFolder/initial_heads.txt")
 k_field = np.loadtxt("InputFolder/k_field.txt")
-# k_field = np.ones((10, 20))
+# h_field = np.ones((10, 20))*10
 
-# hk_field = h_field * k_field
-#
-# hk_sum_field = shift_matrix_sum(hk_field)
-# k_sum_field = shift_matrix_sum(k_field)
-# new_h_field = hk_sum_field / k_sum_field
-
-print(h_field)
-print(k_field)
-print(laplace_smooth(h_field, k_field))
+# print(h_field)
+print(np.ma.masked_not_equal(h_field, 0).mask * 1)
 
 plt.matshow(h_field)
 plt.matshow(k_field)
-plt.matshow(laplace_smooth_iter(h_field, k_field, 10))
+plt.matshow(laplace_smooth_iter(h_field, k_field, 1000))
 plt.show()
