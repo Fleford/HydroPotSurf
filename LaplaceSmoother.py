@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.linalg import lstsq
 import matplotlib.pyplot as plt
 
 
@@ -36,9 +37,9 @@ def laplace_smooth(h_matrix, k_matrix):
     return new_hk_matrix
 
 
-def laplace_smooth_iter(h_matrix, k_matrix, iterations):
+def laplace_smooth_iter(h_const, h_matrix, k_matrix, iterations):
     # Performs a number of iterations of Laplace smoothing
-    h_const = h_matrix
+    h_matrix = np.ones_like(h_matrix) * h_field.max()
     for runs in range(iterations):
         # Make masks for constant heads
         zero_at_const_h = np.ma.masked_equal(h_const, 0).mask * 1
@@ -59,10 +60,25 @@ h_field = np.loadtxt("InputFolder/initial_heads.txt")
 k_field = np.loadtxt("InputFolder/k_field.txt")
 # h_field = np.ones((10, 20))*10
 
-# print(h_field)
-print(np.ma.masked_not_equal(h_field, 0).mask * 1)
+# Fit a plane to data
+h_obs = np.array([[0, 0, 15],
+                     [4, 12, 10],
+                     [7, 9, 12],
+                     [9, 18, 1]])
+# print(h_obs[:, 2].reshape(-1, 1))
+# print(np.ones_like(h_obs[:, 2]).reshape(-1, 1))
+# print(h_obs[:, 0:2])
+# print(np.concatenate((h_obs[:, 0:2], np.ones_like(h_obs[:, 2]).reshape(-1, 1)), axis=1))
+M = np.concatenate((h_obs[:, 0:2], np.ones_like(h_obs[:, 2]).reshape(-1, 1)), axis=1)
+y = h_obs[:, 2].reshape(-1, 1)
+abc, res, rnk, s = lstsq(M, y)
+print(M)
+print(y)
+print(abc)
+print(M.dot(abc))
 
-plt.matshow(h_field)
-plt.matshow(k_field)
-plt.matshow(laplace_smooth_iter(h_field, k_field, 1000))
-plt.show()
+
+# plt.matshow(h_field)
+# plt.matshow(k_field)
+# plt.matshow(laplace_smooth_iter(h_field, h_field, k_field, 100))
+# plt.show()
