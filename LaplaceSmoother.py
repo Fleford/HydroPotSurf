@@ -31,6 +31,13 @@ def laplace_smooth(h_matrix, k_matrix):
                      out=np.zeros_like(shift_matrix_sum(hk_matrix)), where=shift_matrix_sum(k_matrix) != 0)
 
 
+def laplace_smooth_iter(h_matrix, k_matrix, iterations):
+    # Performs a number of iterations of Laplace smoothing
+    for runs in range(iterations):
+        h_matrix = laplace_smooth(h_matrix, k_matrix)
+    return h_matrix
+
+
 h_field = np.loadtxt("InputFolder/initial_heads.txt")
 k_field = np.loadtxt("InputFolder/k_field.txt")
 # k_field = np.ones((10, 20))
@@ -46,5 +53,6 @@ print(k_field)
 print(np.nan_to_num(laplace_smooth(h_field, k_field)))
 
 plt.matshow(h_field)
-plt.matshow(laplace_smooth(h_field, k_field))
+plt.matshow(k_field)
+plt.matshow(laplace_smooth_iter(h_field, k_field, 160))
 plt.show()
