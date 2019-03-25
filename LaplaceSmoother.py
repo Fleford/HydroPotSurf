@@ -27,8 +27,12 @@ def laplace_smooth(h_matrix, k_matrix):
     # Performs one iteration of the Laplace smoothing operation
     hk_matrix = h_matrix * k_matrix
     # When dividing by zero, a zero is returned
-    return np.divide(shift_matrix_sum(hk_matrix), shift_matrix_sum(k_matrix),
+    new_hk_matrix = np.divide(shift_matrix_sum(hk_matrix), shift_matrix_sum(k_matrix),
                      out=np.zeros_like(shift_matrix_sum(hk_matrix)), where=shift_matrix_sum(k_matrix) != 0)
+    # # Zero out regions with zero hk
+    new_hk_matrix = np.divide((new_hk_matrix * k_matrix), k_matrix,
+                     out=np.zeros_like(new_hk_matrix * hk_matrix), where=k_matrix != 0)
+    return new_hk_matrix
 
 
 def laplace_smooth_iter(h_matrix, k_matrix, iterations):
@@ -50,9 +54,9 @@ k_field = np.loadtxt("InputFolder/k_field.txt")
 
 print(h_field)
 print(k_field)
-print(np.nan_to_num(laplace_smooth(h_field, k_field)))
+print(laplace_smooth(h_field, k_field))
 
 plt.matshow(h_field)
 plt.matshow(k_field)
-plt.matshow(laplace_smooth_iter(h_field, k_field, 160))
+plt.matshow(laplace_smooth_iter(h_field, k_field, 10))
 plt.show()
