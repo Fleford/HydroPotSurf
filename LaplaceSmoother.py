@@ -39,7 +39,7 @@ def laplace_smooth(h_matrix, k_matrix):
 
 def laplace_smooth_iter(h_const, h_matrix, k_matrix, iterations):
     # Performs a number of iterations of Laplace smoothing
-    h_matrix = np.ones_like(h_matrix) * h_field.max()
+    # h_matrix = np.ones_like(h_matrix) * h_field.max()
     for runs in range(iterations):
         # Make masks for constant heads
         zero_at_const_h = np.ma.masked_equal(h_const, 0).mask * 1
@@ -78,7 +78,7 @@ print(abc)
 print(M.dot(abc))
 
 
-# plt.matshow(h_field)
-# plt.matshow(k_field)
-# plt.matshow(laplace_smooth_iter(h_field, h_field, k_field, 100))
-# plt.show()
+plt.matshow(h_field)
+plt.matshow(k_field)
+plt.matshow(laplace_smooth_iter(h_field, h_field, k_field, 10))
+plt.show()
