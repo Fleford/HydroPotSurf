@@ -40,6 +40,9 @@ def laplace_smooth(h_matrix, k_matrix):
 def laplace_smooth_iter(h_const, h_matrix, k_matrix, convergence_threshold=0):
     # Performs a number of iterations of Laplace smoothing
     # h_matrix = np.ones_like(h_matrix) * h_field.max()
+
+    # Sanitize k_matrix from negatives
+    k_matrix = np.absolute(k_matrix)
     while True:
         # Make masks for constant heads
         zero_at_const_h = np.ma.masked_equal(h_const, 0).mask * 1
@@ -53,7 +56,7 @@ def laplace_smooth_iter(h_const, h_matrix, k_matrix, convergence_threshold=0):
                                  out=np.zeros_like(new_h_matrix * k_matrix), where=k_matrix != 0)
         # Stop when the solution stops changing:
         max_diff = np.max(new_h_matrix - h_matrix)
-        print(max_diff)
+        # print(max_diff)
         if max_diff <= convergence_threshold:
             break
 
@@ -62,11 +65,32 @@ def laplace_smooth_iter(h_const, h_matrix, k_matrix, convergence_threshold=0):
     return h_matrix
 
 
-h_field = np.loadtxt("InputFolder/initial_heads.txt")
-k_field = np.loadtxt("InputFolder/k_field.txt")
+# Load in observation values
+obs_field = np.loadtxt("InputFolder/initial_heads.txt")
+h_field = obs_field
 # h_field = np.ones((10, 20))*10
+# Load k_field with parameters
+k_field = np.loadtxt("InputFolder/k_field.txt")
+# print(k_field)
+# k_field = np.absolute(k_field)
+one_at_neg_k = np.ma.masked_less(k_field, 0).mask*1
+zero_at_neg_k = np.ma.masked_greater_equal(k_field, 0).mask*1
+# print(one_at_neg_k)
+# print(zero_at_neg_k)
 
-# Fit a plane to data
+# Convert observation matrix to observation matrix
+zero_at_obs_h = np.ma.masked_equal(obs_field, 0).mask * 1
+one_at_obs_h = np.ma.masked_not_equal(obs_field, 0).mask * 1
+print(zero_at_obs_h)
+print(one_at_obs_h)
+obs_args = np.argwhere(obs_field > 0)
+obs_vals = obs_field[obs_args[:, 0], obs_args[:, 1]].reshape(-1, 1)
+obs_mat = np.concatenate((obs_args, obs_vals), axis=1)
+print(obs_args)
+print(obs_vals)
+print(obs_mat)
+
+# Fit a plane to points
 h_obs = np.array([[0, 0, 15],
                   [3, 12, 11],
                   [6, 9, 12],
@@ -93,11 +117,11 @@ m_grid = np.concatenate((y_index.reshape(-1, 1), x_index.reshape(-1, 1)), axis=1
 m_grid = np.concatenate((m_grid, np.ones_like(y_index.reshape(-1, 1))), axis=1)
 # print(m_grid)
 h_plane = m_grid.dot(abc).reshape(10, 20)
-plt.matshow(h_plane)
+# plt.matshow(h_plane)
 
 
-# Test Laplace smoother
-plt.matshow(h_field)
-plt.matshow(k_field)
-plt.matshow(laplace_smooth_iter(h_field, h_field, k_field))
-plt.show()
+# # Test Laplace smoother
+# plt.matshow(h_field)
+# plt.matshow(k_field)
+# plt.matshow(laplace_smooth_iter(h_field, h_field, k_field))
+# plt.show()
