@@ -37,7 +37,7 @@ def laplace_smooth(h_matrix, k_matrix):
     return new_hk_matrix
 
 
-def laplace_smooth_iter(h_const, h_matrix, k_matrix, convergence_threshold=1):
+def laplace_smooth_iter(h_const, h_matrix, k_matrix, convergence_threshold=0):
     # Performs a number of iterations of Laplace smoothing
     # h_matrix = np.ones_like(h_matrix) * h_field.max()
     while True:
@@ -68,9 +68,9 @@ k_field = np.loadtxt("InputFolder/k_field.txt")
 
 # Fit a plane to data
 h_obs = np.array([[0, 0, 15],
-                     [4, 12, 10],
-                     [7, 9, 12],
-                     [9, 18, 1]])
+                  [3, 12, 11],
+                  [6, 9, 12],
+                  [8, 18, 1]])
 # print(h_obs[:, 2].reshape(-1, 1))
 # print(np.ones_like(h_obs[:, 2]).reshape(-1, 1))
 # print(h_obs[:, 0:2])
@@ -78,12 +78,26 @@ h_obs = np.array([[0, 0, 15],
 M = np.concatenate((h_obs[:, 0:2], np.ones_like(h_obs[:, 2]).reshape(-1, 1)), axis=1)
 y = h_obs[:, 2].reshape(-1, 1)
 abc, res, rnk, s = lstsq(M, y)
-print(M)
-print(y)
-print(abc)
-print(M.dot(abc))
+# print(M)
+# print(y)
+# print(abc)
+# print(M.dot(abc))
+
+# Fill matrix with plane data
+y = np.arange(0, 10)
+x = np.arange(0, 20)
+x_index, y_index = np.meshgrid(x, y)
+# print(y_index)
+# print(x_index)
+m_grid = np.concatenate((y_index.reshape(-1, 1), x_index.reshape(-1, 1)), axis=1)
+m_grid = np.concatenate((m_grid, np.ones_like(y_index.reshape(-1, 1))), axis=1)
+# print(m_grid)
+h_plane = m_grid.dot(abc).reshape(10, 20)
+print(h_plane.shape)
+plt.matshow(h_plane)
 
 
+# Test Laplace smoother
 plt.matshow(h_field)
 plt.matshow(k_field)
 plt.matshow(laplace_smooth_iter(h_field, h_field, k_field))
