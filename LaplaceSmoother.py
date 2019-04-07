@@ -53,7 +53,7 @@ def laplace_smooth_iter(h_const, h_matrix, k_matrix, convergence_threshold=0):
                                  out=np.zeros_like(new_h_matrix * k_matrix), where=k_matrix != 0)
         # Stop when the solution stops changing:
         max_diff = np.max(new_h_matrix - h_matrix)
-        # print(max_diff)
+        print(max_diff)
         if max_diff <= convergence_threshold:
             break
 
@@ -93,7 +93,6 @@ m_grid = np.concatenate((y_index.reshape(-1, 1), x_index.reshape(-1, 1)), axis=1
 m_grid = np.concatenate((m_grid, np.ones_like(y_index.reshape(-1, 1))), axis=1)
 # print(m_grid)
 h_plane = m_grid.dot(abc).reshape(10, 20)
-print(h_plane.shape)
 plt.matshow(h_plane)
 
 
