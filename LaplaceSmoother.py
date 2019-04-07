@@ -37,31 +37,37 @@ def laplace_smooth(h_matrix, k_matrix):
     return new_hk_matrix
 
 
-def laplace_smooth_iter(h_const, h_matrix, k_matrix, convergence_threshold=0):
+def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0):
     # Performs a number of iterations of Laplace smoothing
     # h_matrix = np.ones_like(h_matrix) * h_field.max()
 
+    # Make mask and copy of initial h_matrix for constant heads (where k is negative)
+    one_at_neg_k = np.ma.masked_less(k_matrix, 0).mask * 1
+    zero_at_neg_k = np.ma.masked_greater_equal(k_matrix, 0).mask * 1
+    initial_h_matrix = h_matrix
+
     # Sanitize k_matrix from negatives
-    k_matrix = np.absolute(k_matrix)
+    k_matrix_abs = np.absolute(k_matrix)
+
     while True:
-        # Make masks for constant heads
-        zero_at_const_h = np.ma.masked_equal(h_const, 0).mask * 1
-        one_at_const_h = np.ma.masked_not_equal(h_const, 0).mask * 1
         # Perform smoothing
-        new_h_matrix = laplace_smooth(h_matrix, k_matrix)
-        # Apply constants
-        new_h_matrix = zero_at_const_h * new_h_matrix + one_at_const_h * h_const
+        new_h_matrix = laplace_smooth(h_matrix, k_matrix_abs)
+        # Apply constant heads (where k is negative)
+        new_h_matrix = zero_at_neg_k * new_h_matrix + one_at_neg_k * initial_h_matrix
         # Zero out const heads on zero k
-        new_h_matrix = np.divide((new_h_matrix * k_matrix), k_matrix,
-                                 out=np.zeros_like(new_h_matrix * k_matrix), where=k_matrix != 0)
-        # Stop when the solution stops changing:
+        new_h_matrix = np.divide((new_h_matrix * k_matrix_abs), k_matrix_abs,
+                                 out=np.zeros_like(new_h_matrix * k_matrix_abs), where=k_matrix_abs != 0)
+        # Calculate change
         max_diff = np.max(new_h_matrix - h_matrix)
-        # print(max_diff)
-        if max_diff <= convergence_threshold:
-            break
 
         # Update matrix
         h_matrix = new_h_matrix
+
+        # Stop if the change is too small
+        print(max_diff)
+        if max_diff <= convergence_threshold:
+            break
+
     return h_matrix
 
 
@@ -120,8 +126,9 @@ h_plane = m_grid.dot(abc).reshape(10, 20)
 # plt.matshow(h_plane)
 
 
-# # Test Laplace smoother
-# plt.matshow(h_field)
-# plt.matshow(k_field)
-# plt.matshow(laplace_smooth_iter(h_field, h_field, k_field))
-# plt.show()
+# Test Laplace smoother
+plt.matshow(h_plane)
+plt.matshow(k_field)
+plt.matshow(laplace_smooth_iter(h_plane, k_field))
+plt.contour(laplace_smooth_iter(h_plane, k_field))
+plt.show()
