@@ -37,10 +37,10 @@ def laplace_smooth(h_matrix, k_matrix):
     return new_hk_matrix
 
 
-def laplace_smooth_iter(h_const, h_matrix, k_matrix, iterations):
+def laplace_smooth_iter(h_const, h_matrix, k_matrix, convergence_threshold=1):
     # Performs a number of iterations of Laplace smoothing
     # h_matrix = np.ones_like(h_matrix) * h_field.max()
-    for runs in range(iterations):
+    while True:
         # Make masks for constant heads
         zero_at_const_h = np.ma.masked_equal(h_const, 0).mask * 1
         one_at_const_h = np.ma.masked_not_equal(h_const, 0).mask * 1
@@ -51,6 +51,12 @@ def laplace_smooth_iter(h_const, h_matrix, k_matrix, iterations):
         # Zero out const heads on zero k
         new_h_matrix = np.divide((new_h_matrix * k_matrix), k_matrix,
                                  out=np.zeros_like(new_h_matrix * k_matrix), where=k_matrix != 0)
+        # Stop when the solution stops changing:
+        max_diff = np.max(new_h_matrix - h_matrix)
+        # print(max_diff)
+        if max_diff <= convergence_threshold:
+            break
+
         # Update matrix
         h_matrix = new_h_matrix
     return h_matrix
@@ -80,5 +86,5 @@ print(M.dot(abc))
 
 plt.matshow(h_field)
 plt.matshow(k_field)
-plt.matshow(laplace_smooth_iter(h_field, h_field, k_field, 10))
+plt.matshow(laplace_smooth_iter(h_field, h_field, k_field))
 plt.show()
