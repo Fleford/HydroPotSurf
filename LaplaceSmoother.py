@@ -101,6 +101,7 @@ h_obs = np.array([[0, 0, 15],
                   [3, 12, 11],
                   [6, 9, 12],
                   [8, 18, 1]])
+h_obs = obs_mat
 # print(h_obs[:, 2].reshape(-1, 1))
 # print(np.ones_like(h_obs[:, 2]).reshape(-1, 1))
 # print(h_obs[:, 0:2])
@@ -127,8 +128,11 @@ h_plane = m_grid.dot(abc).reshape(10, 20)
 
 
 # Test Laplace smoother
+plt.matshow(obs_field)
 plt.matshow(h_plane)
 plt.matshow(k_field)
-plt.matshow(laplace_smooth_iter(h_plane, k_field))
-plt.contour(laplace_smooth_iter(h_plane, k_field))
+# plt.matshow(laplace_smooth_iter(h_plane, k_field))
+# plt.contour(laplace_smooth_iter(h_plane, k_field))
+plt.matshow(laplace_smooth_iter(obs_field, k_field))
+# plt.contour(laplace_smooth_iter(obs_field, k_field))
 plt.show()
