@@ -37,7 +37,7 @@ def laplace_smooth(h_matrix, k_matrix):
     return new_hk_matrix
 
 
-def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0):
+def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.001):
     # Performs a number of iterations of Laplace smoothing
     # h_matrix = np.ones_like(h_matrix) * h_field.max()
 
@@ -142,13 +142,14 @@ diff = result2 - result
 new_obs = obs_field-diff
 result3 = laplace_smooth_iter(new_obs, k_field)
 result4 = laplace_smooth_iter(result3, k_field2)
-plt.matshow(result4)
+# plt.matshow(result4)
 diff2 = result4 - result
-plt.matshow(diff2)
+# plt.matshow(diff2)
 new_obs_2 = new_obs-diff2
 result5 = laplace_smooth_iter(new_obs_2, k_field)
 result6 = laplace_smooth_iter(result5, k_field2)
 plt.matshow(result6)
 diff3 = result6 - result
 plt.matshow(diff3)
+plt.contour(result6)
 plt.show()
