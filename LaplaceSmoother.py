@@ -77,6 +77,7 @@ h_field = obs_field
 # h_field = np.ones((10, 20))*10
 # Load k_field with parameters
 k_field = np.loadtxt("InputFolder/k_field.txt")
+k_field2 = np.loadtxt("InputFolder/k_field2.txt")
 # print(k_field)
 # k_field = np.absolute(k_field)
 one_at_neg_k = np.ma.masked_less(k_field, 0).mask*1
@@ -128,11 +129,26 @@ h_plane = m_grid.dot(abc).reshape(10, 20)
 
 
 # Test Laplace smoother
-plt.matshow(obs_field)
-plt.matshow(h_plane)
-plt.matshow(k_field)
+# plt.matshow(obs_field)
+# plt.matshow(h_plane)
+# plt.matshow(k_field)
 # plt.matshow(laplace_smooth_iter(h_plane, k_field))
 # plt.contour(laplace_smooth_iter(h_plane, k_field))
-plt.matshow(laplace_smooth_iter(obs_field, k_field))
-# plt.contour(laplace_smooth_iter(obs_field, k_field))
+result = laplace_smooth_iter(obs_field, k_field)
+result2 = laplace_smooth_iter(result, k_field2)
+# plt.matshow(result2)
+diff = result2 - result
+# plt.matshow(diff)
+new_obs = obs_field-diff
+result3 = laplace_smooth_iter(new_obs, k_field)
+result4 = laplace_smooth_iter(result3, k_field2)
+plt.matshow(result4)
+diff2 = result4 - result
+plt.matshow(diff2)
+new_obs_2 = new_obs-diff2
+result5 = laplace_smooth_iter(new_obs_2, k_field)
+result6 = laplace_smooth_iter(result5, k_field2)
+plt.matshow(result6)
+diff3 = result6 - result
+plt.matshow(diff3)
 plt.show()
