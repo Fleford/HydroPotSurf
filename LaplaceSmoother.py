@@ -151,5 +151,6 @@ result6 = laplace_smooth_iter(result5, k_field2)
 plt.matshow(result6)
 diff3 = result6 - result
 plt.matshow(diff3)
+result6[result6 == 0] = np.nan
 plt.contour(result6)
 plt.show()
