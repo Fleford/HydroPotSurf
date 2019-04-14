@@ -37,7 +37,7 @@ def laplace_smooth(h_matrix, k_matrix):
     return new_hk_matrix
 
 
-def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.0001):
+def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.000):
     # Performs a number of iterations of Laplace smoothing
     # h_matrix = np.ones_like(h_matrix) * h_field.max()
 
@@ -77,30 +77,50 @@ def calculate_boundary_values(obs_matrix, k_cnst_obs, k_cnst_bnd):
     # k_cnst_obs = K field with -1 at constant-head boundary
     # k_cnst_bnd = K field with -1 at observation heads
 
-    # Prepare variables
-    h_field_cnst_bnd = None
-    old_h_field_cnst_bnd = 0
-
     # Make initial specified observation heads as a copy of obs_matrix
     spcfd_obs_h = obs_matrix
 
-    for cnts in range(20):
-        # Calculate constant-head boundary values, given specified observation heads
-        h_field_cnst_obs = laplace_smooth_iter(spcfd_obs_h, k_cnst_obs)
+    # Calculate constant-head boundary values, given specified observation heads
+    h_field_cnst_obs = laplace_smooth_iter(spcfd_obs_h, k_cnst_obs)
 
-        # Calculate observation values, given constant-head boundary values
-        h_field_cnst_bnd = laplace_smooth_iter(h_field_cnst_obs, k_cnst_bnd)
+    # Calculate observation values, given constant-head boundary values
+    h_field_cnst_bnd = laplace_smooth_iter(h_field_cnst_obs, k_cnst_bnd)
 
-        # Calculate change of h_field_cnst_bnd (for convergence check)
-        max_h_field_diff = np.max(h_field_cnst_bnd - old_h_field_cnst_bnd)
-        old_h_field_cnst_bnd = h_field_cnst_bnd
-        print(max_h_field_diff)
+    # Make mask for observation heads (1 only at observation heads)
+    obs_h_mask = k_cnst_obs
+    obs_h_mask[obs_h_mask != -1] = 0
+    obs_h_mask[obs_h_mask == -1] = 1
+    # print(obs_h_mask)
 
-        # Use the difference between calculated and measured observation heads
-        # to adjust the specified observation heads
-        spcfd_obs_h = spcfd_obs_h - (h_field_cnst_bnd - obs_matrix)
+    # Cut out estimated observation heads from h_field_cnst_bnd
+    obs_h_from_bnds = h_field_cnst_bnd * obs_h_mask
+    obs_h_from_bnds = obs_h_from_bnds[obs_h_from_bnds != 0]
+    obs_h_from_bnds = obs_h_from_bnds.reshape(-1, 1)
+    # print(obs_h_from_bnds)
 
-    print(spcfd_obs_h)
+    # Cut out measured observation heads from obs_matrix
+    obs_h_from_meas = obs_matrix * obs_h_mask
+    obs_h_from_meas = obs_h_from_meas[obs_h_from_meas != 0]
+    obs_h_from_meas = obs_h_from_meas.reshape(-1, 1)
+    # print(obs_h_from_meas)
+
+    # Find scale and offset values to fit calculated heads to observed heads (mx = y)
+    est_obs_matrix = np.concatenate((obs_h_from_bnds, np.ones_like(obs_h_from_bnds)), axis=1)
+    # print(est_obs_matrix)
+    scale_offset, res, rnk, s = lstsq(est_obs_matrix, obs_h_from_meas)
+    # print(scale_offset)
+    # print(est_obs_matrix.dot(scale_offset))
+
+    # Apply scale and offset values to h_field_cnst_bnd
+    h_field_cnst_bnd = scale_offset[0]*h_field_cnst_bnd + scale_offset[1]
+
+    # Set the heads at no flow regions to zero
+    zero_k_mask = k_cnst_bnd
+    zero_k_mask[zero_k_mask != 0] = 1
+    # print(zero_k_mask)
+    h_field_cnst_bnd = h_field_cnst_bnd * zero_k_mask
+
+    # Return your hardwork
     return h_field_cnst_bnd
 
 
@@ -199,3 +219,10 @@ plt.matshow(new_h_field)
 plt.matshow(obs_field)
 plt.contour(new_h_field, levels=levels)
 plt.show()
+
+# x = obs_field.reshape(-1)
+# print(x)
+# y = x[x != 0]
+# x[x != 0] = 1
+# print(x)
+# print(y)
