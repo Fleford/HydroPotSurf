@@ -37,7 +37,7 @@ def laplace_smooth(h_matrix, k_matrix):
     return new_hk_matrix
 
 
-def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.001):
+def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.0001):
     # Performs a number of iterations of Laplace smoothing
     # h_matrix = np.ones_like(h_matrix) * h_field.max()
 
@@ -64,11 +64,47 @@ def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.001):
         h_matrix = new_h_matrix
 
         # Stop if the change is too small
-        print(max_diff)
+        # print(max_diff)
         if max_diff <= convergence_threshold:
             break
 
     return h_matrix
+
+
+def calculate_boundary_values(obs_matrix, k_cnst_obs, k_cnst_bnd):
+    # Estimates the head values at the constant-head boundary
+    # obs_matrix = Contains observation heads (zero at all other points)
+    # k_cnst_obs = K field with -1 at constant-head boundary
+    # k_cnst_bnd = K field with -1 at observation heads
+
+    # Prepare variables
+    h_field_cnst_bnd = None
+    old_h_field_cnst_bnd = 0
+
+    # Make initial specified observation heads as a copy of obs_matrix
+    spcfd_obs_h = obs_matrix
+
+    for cnts in range(20):
+        # Calculate constant-head boundary values, given specified observation heads
+        h_field_cnst_obs = laplace_smooth_iter(spcfd_obs_h, k_cnst_obs)
+
+        # Calculate observation values, given constant-head boundary values
+        h_field_cnst_bnd = laplace_smooth_iter(h_field_cnst_obs, k_cnst_bnd)
+
+        # Calculate change of h_field_cnst_bnd (for convergence check)
+        max_h_field_diff = np.max(h_field_cnst_bnd - old_h_field_cnst_bnd)
+        old_h_field_cnst_bnd = h_field_cnst_bnd
+        print(max_h_field_diff)
+
+        # Use the difference between calculated and measured observation heads
+        # to adjust the specified observation heads
+        spcfd_obs_h = spcfd_obs_h - (h_field_cnst_bnd - obs_matrix)
+
+    print(spcfd_obs_h)
+    return h_field_cnst_bnd
+
+
+
 
 
 # Load in observation values
@@ -88,14 +124,14 @@ zero_at_neg_k = np.ma.masked_greater_equal(k_field, 0).mask*1
 # Convert observation matrix to observation matrix
 zero_at_obs_h = np.ma.masked_equal(obs_field, 0).mask * 1
 one_at_obs_h = np.ma.masked_not_equal(obs_field, 0).mask * 1
-print(zero_at_obs_h)
-print(one_at_obs_h)
+# print(zero_at_obs_h)
+# print(one_at_obs_h)
 obs_args = np.argwhere(obs_field > 0)
 obs_vals = obs_field[obs_args[:, 0], obs_args[:, 1]].reshape(-1, 1)
 obs_mat = np.concatenate((obs_args, obs_vals), axis=1)
-print(obs_args)
-print(obs_vals)
-print(obs_mat)
+# print(obs_args)
+# print(obs_vals)
+# print(obs_mat)
 
 # Fit a plane to points
 h_obs = np.array([[0, 0, 15],
@@ -134,23 +170,32 @@ h_plane = m_grid.dot(abc).reshape(10, 20)
 # plt.matshow(k_field)
 # plt.matshow(laplace_smooth_iter(h_plane, k_field))
 # plt.contour(laplace_smooth_iter(h_plane, k_field))
-result = laplace_smooth_iter(obs_field, k_field)
-result2 = laplace_smooth_iter(result, k_field2)
-# plt.matshow(result2)
-diff = result2 - result
-# plt.matshow(diff)
-new_obs = obs_field-diff
-result3 = laplace_smooth_iter(new_obs, k_field)
-result4 = laplace_smooth_iter(result3, k_field2)
-# plt.matshow(result4)
-diff2 = result4 - result
-# plt.matshow(diff2)
-new_obs_2 = new_obs-diff2
-result5 = laplace_smooth_iter(new_obs_2, k_field)
-result6 = laplace_smooth_iter(result5, k_field2)
-plt.matshow(result6)
-diff3 = result6 - result
-plt.matshow(diff3)
-result6[result6 == 0] = np.nan
-plt.contour(result6)
+
+# result = laplace_smooth_iter(obs_field, k_field)
+# result2 = laplace_smooth_iter(result, k_field2)
+# # plt.matshow(result2)
+# diff = result2 - result
+# # plt.matshow(diff)
+# new_obs = obs_field-diff
+# result3 = laplace_smooth_iter(new_obs, k_field)
+# plt.matshow(new_obs)
+# result4 = laplace_smooth_iter(result3, k_field2)
+# # plt.matshow(result4)
+# diff2 = result4 - result
+# # plt.matshow(diff2)
+# new_obs_2 = new_obs-diff2
+# result5 = laplace_smooth_iter(new_obs_2, k_field)
+# plt.matshow(new_obs_2)
+# result6 = laplace_smooth_iter(result5, k_field2)
+# plt.matshow(result6)
+# diff3 = result6 - result
+# plt.matshow(diff3)
+
+new_h_field = calculate_boundary_values(obs_field, k_field, k_field2)
+levels = np.arange(np.amin(new_h_field), np.amax(new_h_field), 0.5)
+new_h_field[new_h_field == 0] = np.nan
+empty = np.zeros_like(new_h_field)
+plt.matshow(new_h_field)
+plt.matshow(obs_field)
+plt.contour(new_h_field, levels=levels)
 plt.show()
