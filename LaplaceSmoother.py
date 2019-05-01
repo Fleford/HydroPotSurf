@@ -124,6 +124,20 @@ def calculate_boundary_values(obs_matrix, k_cnst_obs, k_cnst_bnd):
     return h_field_cnst_bnd
 
 
+def above_below_pivot_masks(h_matrix, pivot_value, k_matrix):
+    # Given an h_field and the pivot value, it generates two masks
+    # for cells with heads above and below the pivot value
+
+    k_mask = np.ma.masked_not_equal(k_matrix, 0).mask * 1
+    above_pivot = np.ma.masked_greater(h_matrix, pivot_value).mask * 1 * k_mask
+    bellow_or_equal_pivot = np.ma.masked_less_equal(h_matrix, pivot_value).mask * 1 * k_mask
+
+    return above_pivot, bellow_or_equal_pivot
+
+
+
+
+
 
 # Load in observation values
 obs_field = np.loadtxt("InputFolder/initial_heads.txt")
@@ -132,7 +146,6 @@ h_field = obs_field
 # Load k_field with parameters
 k_field = np.loadtxt("InputFolder/k_field.txt")
 k_field2 = np.loadtxt("InputFolder/k_field2.txt")
-print(k_field)
 # k_field = np.absolute(k_field)
 one_at_neg_k = np.ma.masked_less(k_field, 0).mask*1
 zero_at_neg_k = np.ma.masked_greater_equal(k_field, 0).mask*1
@@ -218,10 +231,13 @@ new_h_field = calculate_boundary_values(obs_field, k_field, k_field2)
 # plt.contour(new_h_field, levels=levels)
 # plt.show()
 
-print(new_h_field)
-above_h_cell = np.ma.masked_greater(new_h_field, 10.1).mask*1
-belequal_h_cell = np.ma.masked_less_equal(new_h_field, 10.1).mask*1
-print(k_field)
+# print(new_h_field)
+k_mask = np.ma.masked_not_equal(k_field, 0).mask*1
+# above_h_cell = np.ma.masked_greater(new_h_field, 10.1).mask*1*k_mask
+# belequal_h_cell = np.ma.masked_less_equal(new_h_field, 10.1).mask*1*k_mask
+
+above_h_cell, belequal_h_cell = above_below_pivot_masks(new_h_field, 10.1, k_field)
+
 print(above_h_cell)
 print(belequal_h_cell)
 
