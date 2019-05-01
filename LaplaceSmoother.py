@@ -232,11 +232,15 @@ new_h_field = calculate_boundary_values(obs_field, k_field, k_field2)
 # plt.show()
 
 # print(new_h_field)
-k_mask = np.ma.masked_not_equal(k_field, 0).mask*1
+k_mask = np.ma.masked_equal(k_field, -1).mask*1
+print(k_mask)
+obs_ind = np.nonzero(k_mask)
+h_pivot = new_h_field[obs_ind[0][0], obs_ind[1][0]]
+print(h_pivot)
 # above_h_cell = np.ma.masked_greater(new_h_field, 10.1).mask*1*k_mask
 # belequal_h_cell = np.ma.masked_less_equal(new_h_field, 10.1).mask*1*k_mask
 
-above_h_cell, belequal_h_cell = above_below_pivot_masks(new_h_field, 10.1, k_field)
+above_h_cell, belequal_h_cell = above_below_pivot_masks(new_h_field, h_pivot, k_field)
 
 print(above_h_cell)
 print(belequal_h_cell)
