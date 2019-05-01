@@ -130,9 +130,9 @@ def above_below_pivot_masks(h_matrix, pivot_value, k_matrix):
 
     k_mask = np.ma.masked_not_equal(k_matrix, 0).mask * 1
     above_pivot = np.ma.masked_greater(h_matrix, pivot_value).mask * 1 * k_mask
-    bellow_or_equal_pivot = np.ma.masked_less_equal(h_matrix, pivot_value).mask * 1 * k_mask
+    below_or_equal_pivot = np.ma.masked_less_equal(h_matrix, pivot_value).mask * 1 * k_mask
 
-    return above_pivot, bellow_or_equal_pivot
+    return above_pivot, below_or_equal_pivot
 
 
 
