@@ -37,7 +37,7 @@ def laplace_smooth(h_matrix, k_matrix):
     return new_hk_matrix
 
 
-def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.000):
+def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.001):
     # Performs a number of iterations of Laplace smoothing
     # h_matrix = np.ones_like(h_matrix) * h_field.max()
 
@@ -78,7 +78,7 @@ def calculate_boundary_values(obs_matrix, k_cnst_obs, k_cnst_bnd):
     # k_cnst_bnd = K field with -1 at observation heads
 
     # Make initial specified observation heads as a copy of obs_matrix
-    spcfd_obs_h = obs_matrix
+    spcfd_obs_h = obs_matrix.copy()
 
     # Calculate constant-head boundary values, given specified observation heads
     h_field_cnst_obs = laplace_smooth_iter(spcfd_obs_h, k_cnst_obs)
@@ -87,7 +87,7 @@ def calculate_boundary_values(obs_matrix, k_cnst_obs, k_cnst_bnd):
     h_field_cnst_bnd = laplace_smooth_iter(h_field_cnst_obs, k_cnst_bnd)
 
     # Make mask for observation heads (1 only at observation heads)
-    obs_h_mask = k_cnst_obs
+    obs_h_mask = k_cnst_obs.copy()
     obs_h_mask[obs_h_mask != -1] = 0
     obs_h_mask[obs_h_mask == -1] = 1
     # print(obs_h_mask)
@@ -115,15 +115,13 @@ def calculate_boundary_values(obs_matrix, k_cnst_obs, k_cnst_bnd):
     h_field_cnst_bnd = scale_offset[0]*h_field_cnst_bnd + scale_offset[1]
 
     # Set the heads at no flow regions to zero
-    zero_k_mask = k_cnst_bnd
+    zero_k_mask = k_cnst_bnd.copy()
     zero_k_mask[zero_k_mask != 0] = 1
     # print(zero_k_mask)
     h_field_cnst_bnd = h_field_cnst_bnd * zero_k_mask
 
     # Return your hardwork
     return h_field_cnst_bnd
-
-
 
 
 
@@ -134,7 +132,7 @@ h_field = obs_field
 # Load k_field with parameters
 k_field = np.loadtxt("InputFolder/k_field.txt")
 k_field2 = np.loadtxt("InputFolder/k_field2.txt")
-# print(k_field)
+print(k_field)
 # k_field = np.absolute(k_field)
 one_at_neg_k = np.ma.masked_less(k_field, 0).mask*1
 zero_at_neg_k = np.ma.masked_greater_equal(k_field, 0).mask*1
@@ -212,13 +210,20 @@ h_plane = m_grid.dot(abc).reshape(10, 20)
 # plt.matshow(diff3)
 
 new_h_field = calculate_boundary_values(obs_field, k_field, k_field2)
-levels = np.arange(np.amin(new_h_field), np.amax(new_h_field), 0.5)
-new_h_field[new_h_field == 0] = np.nan
-empty = np.zeros_like(new_h_field)
-plt.matshow(new_h_field)
-plt.matshow(obs_field)
-plt.contour(new_h_field, levels=levels)
-plt.show()
+# levels = np.arange(np.amin(new_h_field), np.amax(new_h_field), 0.5)
+# new_h_field[new_h_field == 0] = np.nan
+# empty = np.zeros_like(new_h_field)
+# plt.matshow(new_h_field)
+# plt.matshow(obs_field)
+# plt.contour(new_h_field, levels=levels)
+# plt.show()
+
+print(new_h_field)
+above_h_cell = np.ma.masked_greater(new_h_field, 10.1).mask*1
+belequal_h_cell = np.ma.masked_less_equal(new_h_field, 10.1).mask*1
+print(k_field)
+print(above_h_cell)
+print(belequal_h_cell)
 
 # x = obs_field.reshape(-1)
 # print(x)
