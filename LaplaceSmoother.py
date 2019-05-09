@@ -135,6 +135,31 @@ def above_below_pivot_masks(h_matrix, pivot_value, k_matrix):
     return above_pivot, below_or_equal_pivot
 
 
+def safe_divide(dividend, divisor):
+    # Prior to dividing, all zeros in the divisor are set to one
+    divisor_oned = divisor.copy()
+    divisor_oned[divisor_oned == 0] = 1
+
+    return dividend / divisor_oned
+
+
+def split_into_sign_and_magnitude(matrix):
+    # Splits matrix of values into signs (-1,0,1) and magnitudes
+    # Multiplying the two results yields the original value
+
+    # Create magnitude matrix
+    matrix_magnitude = matrix.copy()
+    matrix_magnitude = np.absolute(matrix_magnitude)
+
+    # Create sign matrix
+    matrix_sign = matrix.copy()
+    matrix_sign = safe_divide(matrix_sign, matrix_magnitude)
+
+    return matrix_sign, matrix_magnitude
+
+
+
+
 # Make function that converts a single input matrix into multiple gw_model variables
 
 
@@ -142,11 +167,18 @@ def above_below_pivot_masks(h_matrix, pivot_value, k_matrix):
 
 # Load in observation values
 obs_field = np.loadtxt("InputFolder/initial_heads.txt")
+
 h_field = obs_field
 # h_field = np.ones((10, 20))*10
 # Load k_field with parameters
 k_field_const_obs = np.loadtxt("InputFolder/k_field.txt")
 k_field2 = np.loadtxt("InputFolder/k_field2.txt")
+
+sign, magnitude = split_into_sign_and_magnitude(k_field2)
+print(sign)
+print(magnitude)
+print(sign*magnitude)
+
 # k_field = np.absolute(k_field)
 one_at_neg_k = np.ma.masked_less(k_field_const_obs, 0).mask*1
 zero_at_neg_k = np.ma.masked_greater_equal(k_field_const_obs, 0).mask*1
