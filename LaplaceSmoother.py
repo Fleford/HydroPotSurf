@@ -211,6 +211,10 @@ def input_matrix_to_parameter_matrices(input_matrix):
     # (x = 1) = active cells
     # (x > 1) = observed head (assumed an active cell)
 
+
+    return None
+
+
 # Load in observation values
 obs_field = np.loadtxt("InputFolder/initial_heads.txt")
 
