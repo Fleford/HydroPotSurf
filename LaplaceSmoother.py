@@ -44,7 +44,7 @@ def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.001):
     # Make mask and copy of initial h_matrix for constant heads (where k is negative)
     one_at_neg_k = np.ma.masked_less(k_matrix, 0).mask * 1
     zero_at_neg_k = np.ma.masked_greater_equal(k_matrix, 0).mask * 1
-    initial_h_matrix = h_matrix
+    initial_h_matrix = h_matrix.copy()
 
     # Sanitize k_matrix from negatives
     k_matrix_abs = np.absolute(k_matrix)
@@ -159,7 +159,6 @@ def split_into_sign_and_magnitude(matrix):
 
 
 
-
 # Make function that converts a single input matrix into multiple gw_model variables
 
 
@@ -173,59 +172,11 @@ h_field = obs_field
 # Load k_field with parameters
 k_field_const_obs = np.loadtxt("InputFolder/k_field.txt")
 k_field2 = np.loadtxt("InputFolder/k_field2.txt")
-
-sign, magnitude = split_into_sign_and_magnitude(k_field2)
-print(sign)
-print(magnitude)
-print(sign*magnitude)
-
 # k_field = np.absolute(k_field)
 one_at_neg_k = np.ma.masked_less(k_field_const_obs, 0).mask*1
 zero_at_neg_k = np.ma.masked_greater_equal(k_field_const_obs, 0).mask*1
 # print(one_at_neg_k)
 # print(zero_at_neg_k)
-
-# # Convert observation matrix to observation matrix
-# # zero_at_obs_h = np.ma.masked_equal(obs_field, 0).mask * 1
-# # one_at_obs_h = np.ma.masked_not_equal(obs_field, 0).mask * 1
-# # # print(zero_at_obs_h)
-# # # print(one_at_obs_h)
-# # obs_args = np.argwhere(obs_field > 0)
-# # obs_vals = obs_field[obs_args[:, 0], obs_args[:, 1]].reshape(-1, 1)
-# # obs_mat = np.concatenate((obs_args, obs_vals), axis=1)
-# # # print(obs_args)
-# # # print(obs_vals)
-# # # print(obs_mat)
-
-# # Fit a plane to points
-# h_obs = np.array([[0, 0, 15],
-#                   [3, 12, 11],
-#                   [6, 9, 12],
-#                   [8, 18, 1]])
-# h_obs = obs_mat
-# # print(h_obs[:, 2].reshape(-1, 1))
-# # print(np.ones_like(h_obs[:, 2]).reshape(-1, 1))
-# # print(h_obs[:, 0:2])
-# # print(np.concatenate((h_obs[:, 0:2], np.ones_like(h_obs[:, 2]).reshape(-1, 1)), axis=1))
-# M = np.concatenate((h_obs[:, 0:2], np.ones_like(h_obs[:, 2]).reshape(-1, 1)), axis=1)
-# y = h_obs[:, 2].reshape(-1, 1)
-# abc, res, rnk, s = lstsq(M, y)
-# # print(M)
-# # print(y)
-# # print(abc)
-# # print(M.dot(abc))
-#
-# # Fill matrix with plane data
-# y = np.arange(0, 10)
-# x = np.arange(0, 20)
-# x_index, y_index = np.meshgrid(x, y)
-# # print(y_index)
-# # print(x_index)
-# m_grid = np.concatenate((y_index.reshape(-1, 1), x_index.reshape(-1, 1)), axis=1)
-# m_grid = np.concatenate((m_grid, np.ones_like(y_index.reshape(-1, 1))), axis=1)
-# # print(m_grid)
-# h_plane = m_grid.dot(abc).reshape(10, 20)
-# # plt.matshow(h_plane)
 
 
 # Test Laplace smoother
@@ -235,49 +186,30 @@ zero_at_neg_k = np.ma.masked_greater_equal(k_field_const_obs, 0).mask*1
 # plt.matshow(laplace_smooth_iter(h_plane, k_field))
 # plt.contour(laplace_smooth_iter(h_plane, k_field))
 
-# result = laplace_smooth_iter(obs_field, k_field)
-# result2 = laplace_smooth_iter(result, k_field2)
-# # plt.matshow(result2)
-# diff = result2 - result
-# # plt.matshow(diff)
-# new_obs = obs_field-diff
-# result3 = laplace_smooth_iter(new_obs, k_field)
-# plt.matshow(new_obs)
-# result4 = laplace_smooth_iter(result3, k_field2)
-# # plt.matshow(result4)
-# diff2 = result4 - result
-# # plt.matshow(diff2)
-# new_obs_2 = new_obs-diff2
-# result5 = laplace_smooth_iter(new_obs_2, k_field)
-# plt.matshow(new_obs_2)
-# result6 = laplace_smooth_iter(result5, k_field2)
-# plt.matshow(result6)
-# diff3 = result6 - result
-# plt.matshow(diff3)
-
-new_h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field2)
-# levels = np.arange(np.amin(new_h_field), np.amax(new_h_field), 0.5)
-# new_h_field[new_h_field == 0] = np.nan
-# empty = np.zeros_like(new_h_field)
-# plt.matshow(new_h_field)
+initial_h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field2)
+# levels = np.arange(np.amin(initial_h_field), np.amax(initial_h_field), 0.5)
+# initial_h_field[initial_h_field == 0] = np.nan
+# empty = np.zeros_like(initial_h_field)
+# plt.matshow(initial_h_field)
 # plt.matshow(obs_field)
-# plt.contour(new_h_field, levels=levels)
+# plt.contour(initial_h_field, levels=levels)
 # plt.show()
 
 # Create masks for cells above and below pivot head
-# print(new_h_field)
+# print(initial_h_field)
 k_mask = np.ma.masked_equal(k_field_const_obs, -1).mask*1
 # print(k_mask)
 obs_ind = np.nonzero(k_mask)
-h_pivot = new_h_field[obs_ind[0][0], obs_ind[1][0]]
+h_pivot = initial_h_field[obs_ind[0][0], obs_ind[1][0]]
 # print(h_pivot)
-# above_h_cell = np.ma.masked_greater(new_h_field, 10.1).mask*1*k_mask
-# belequal_h_cell = np.ma.masked_less_equal(new_h_field, 10.1).mask*1*k_mask
+# above_h_cell = np.ma.masked_greater(initial_h_field, 10.1).mask*1*k_mask
+# belequal_h_cell = np.ma.masked_less_equal(initial_h_field, 10.1).mask*1*k_mask
 
-# above_h_cell, belequal_h_cell = above_below_pivot_masks(new_h_field, h_pivot, k_field)
+# above_h_cell, belequal_h_cell = above_below_pivot_masks(initial_h_field, h_pivot, k_field)
 
 # print(above_h_cell)
 # print(belequal_h_cell)
+
 
 # Create list of indexes for each observation head
 print(k_mask)
@@ -286,34 +218,46 @@ pivots = np.argwhere(k_mask)
 
 # grab head of pivot cell for calculated and observed head. Calculate difference
 print(pivots[0])
-pivot_new_h_field = new_h_field[pivots[0][0], pivots[0][1]]
+pivot_new_h_field = initial_h_field[pivots[0][0], pivots[0][1]]
 pivot_obs_field = obs_field[pivots[0][0], pivots[0][1]]
 print(pivot_new_h_field)
 print(pivot_obs_field)
 diff = pivot_new_h_field - pivot_obs_field
 print(diff)
 # Scale diff with min and max of surface
-scaled_diff = diff/(new_h_field.max() - new_h_field.min())
+scaled_diff = diff/(initial_h_field.max() - initial_h_field.min())
 print(scaled_diff)
 
-# create the delta_k array
-above_h_cell, belequal_h_cell = above_below_pivot_masks(new_h_field, pivot_new_h_field, k_field_const_obs)
+# create the delta_k array (apply all pivots into one delta matrix)
+above_h_cell, belequal_h_cell = above_below_pivot_masks(initial_h_field, pivot_new_h_field, k_field_const_obs)
+k_zero_mask = above_h_cell + belequal_h_cell
 print(above_h_cell)
 print(belequal_h_cell)
-delta_k = (above_h_cell * -1 + belequal_h_cell * 1) * scaled_diff
+delta_k = (above_h_cell * -1 + belequal_h_cell * 1) * scaled_diff * k_zero_mask
 print(delta_k)
 
-# apply delta_k to k field
-print(k_field2)
-k_field2_new = k_field2 + delta_k
+
+# apply delta_k to k field and rescale k field
+delta_k = delta_k - delta_k.min() * k_zero_mask     # offset delta_k (no negative k)
+k_field2_sign, k_field2_mag = split_into_sign_and_magnitude(k_field2)
+k_field2_mag = k_field2_mag + delta_k
+# print(k_field2_mag)
+k_field2_mag = k_field2_mag / np.ma.masked_equal(k_field2_mag, 0).min()
+k_field2_new = k_field2_sign * k_field2_mag
 print(k_field2_new)
 
 # run gw_model with old and new k_field
+h_with_old_k = laplace_smooth_iter(initial_h_field, k_field2)
+h_with_new_k = laplace_smooth_iter(initial_h_field, k_field2_new)
+print(h_with_old_k)
+print(h_with_new_k)
+# plt.matshow(h_with_new_k - h_with_old_k)
+# plt.show()
 
-
-# x = obs_field.reshape(-1)
-# print(x)
-# y = x[x != 0]
-# x[x != 0] = 1
-# print(x)
-# print(y)
+# Check errors
+pivot_new_h_field = h_with_new_k[pivots[0][0], pivots[0][1]]
+pivot_obs_field = obs_field[pivots[0][0], pivots[0][1]]
+print(pivot_new_h_field)
+print(pivot_obs_field)
+diff = pivot_new_h_field - pivot_obs_field
+print(diff)
