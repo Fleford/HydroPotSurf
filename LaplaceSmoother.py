@@ -127,6 +127,7 @@ def calculate_boundary_values(obs_matrix, k_cnst_obs, k_cnst_bnd):
 def above_below_pivot_masks(h_matrix, pivot_value, k_matrix):
     # Given an h_field and the pivot value, it generates two masks
     # for cells with heads above and below the pivot value
+    # k_matrix used just to determine active cells
 
     k_mask = np.ma.masked_not_equal(k_matrix, 0).mask * 1
     above_pivot = np.ma.masked_greater(h_matrix, pivot_value).mask * 1 * k_mask
@@ -158,10 +159,54 @@ def split_into_sign_and_magnitude(matrix):
     return matrix_sign, matrix_magnitude
 
 
+def calculate_new_k_field(h_matrix, k_matrix, obs_matrix):
+    # Calculates a slight better k_matrix
+    # Obs_matrix = zero at all values other than observation values
 
-# Make function that converts a single input matrix into multiple gw_model variables
+    # Build index list for all observed heads
+    obs_indexes = np.argwhere(obs_matrix)
+    # print(obs_indexes)
+
+    # Prepare an empty delta_k matrix
+    total_delta_k = np.zeros_like(k_matrix)
+
+    # Prepare mask for zero k
+    zero_k_mask = np.ma.masked_not_equal(k_matrix, 0).mask * 1
+
+    # For each observation,
+    for obs_index in obs_indexes:
+        # Calculate difference between calculated and observed head
+        h_calculated = h_matrix[obs_index[0], obs_index[1]]
+        h_observed = obs_field[obs_index[0], obs_index[1]]
+        h_diff = h_calculated - h_observed
+
+        # Scale diff with min and max of h_field
+        h_diff_scaled = h_diff / (h_matrix.max() - h_matrix.min())
+
+        # Create delta_k array
+        above_h_cal, below_or_equal_h_cal = above_below_pivot_masks(h_matrix, h_calculated, k_matrix)
+        delta_k = (above_h_cal * -1 + below_or_equal_h_cal * 1) * h_diff_scaled * zero_k_mask
+
+        # Apply delta_k to the overall_delta_k
+        total_delta_k = total_delta_k + delta_k
+
+    # Offset the delta_k so there are no negatives
+    offset_total_delta_k = (total_delta_k - total_delta_k.min()) * zero_k_mask
+
+    # Apply the total delta k to the k field
+    k_matrix_sign, k_matrix_mag = split_into_sign_and_magnitude(k_matrix)
+    k_matrix_mag = k_matrix_mag + offset_total_delta_k
+    k_matrix_mag = k_matrix_mag / np.ma.masked_equal(k_matrix_mag, 0).min()  # Scale k so that min = 1
+    k_matrix_new = k_matrix_sign * k_matrix_mag
+
+    return k_matrix_new
 
 
+
+
+
+
+# Function for converting initial_input matrix into multiple matrices
 
 
 # Load in observation values
@@ -178,14 +223,6 @@ zero_at_neg_k = np.ma.masked_greater_equal(k_field_const_obs, 0).mask*1
 # print(one_at_neg_k)
 # print(zero_at_neg_k)
 
-
-# Test Laplace smoother
-# plt.matshow(obs_field)
-# plt.matshow(h_plane)
-# plt.matshow(k_field)
-# plt.matshow(laplace_smooth_iter(h_plane, k_field))
-# plt.contour(laplace_smooth_iter(h_plane, k_field))
-
 initial_h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field2)
 # levels = np.arange(np.amin(initial_h_field), np.amax(initial_h_field), 0.5)
 # initial_h_field[initial_h_field == 0] = np.nan
@@ -195,69 +232,21 @@ initial_h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_fiel
 # plt.contour(initial_h_field, levels=levels)
 # plt.show()
 
-# Create masks for cells above and below pivot head
-# print(initial_h_field)
-k_mask = np.ma.masked_equal(k_field_const_obs, -1).mask*1
-# print(k_mask)
-obs_ind = np.nonzero(k_mask)
-h_pivot = initial_h_field[obs_ind[0][0], obs_ind[1][0]]
-# print(h_pivot)
-# above_h_cell = np.ma.masked_greater(initial_h_field, 10.1).mask*1*k_mask
-# belequal_h_cell = np.ma.masked_less_equal(initial_h_field, 10.1).mask*1*k_mask
-
-# above_h_cell, belequal_h_cell = above_below_pivot_masks(initial_h_field, h_pivot, k_field)
-
-# print(above_h_cell)
-# print(belequal_h_cell)
-
-
-# Create list of indexes for each observation head
-print(k_mask)
-pivots = np.argwhere(k_mask)
-# print(pivots)
-
-# grab head of pivot cell for calculated and observed head. Calculate difference
-print(pivots[0])
-pivot_new_h_field = initial_h_field[pivots[0][0], pivots[0][1]]
-pivot_obs_field = obs_field[pivots[0][0], pivots[0][1]]
-print(pivot_new_h_field)
-print(pivot_obs_field)
-diff = pivot_new_h_field - pivot_obs_field
-print(diff)
-# Scale diff with min and max of surface
-scaled_diff = diff/(initial_h_field.max() - initial_h_field.min())
-print(scaled_diff)
-
-# create the delta_k array (apply all pivots into one delta matrix)
-above_h_cell, belequal_h_cell = above_below_pivot_masks(initial_h_field, pivot_new_h_field, k_field_const_obs)
-k_zero_mask = above_h_cell + belequal_h_cell
-print(above_h_cell)
-print(belequal_h_cell)
-delta_k = (above_h_cell * -1 + belequal_h_cell * 1) * scaled_diff * k_zero_mask
-print(delta_k)
-
-
-# apply delta_k to k field and rescale k field
-delta_k = delta_k - delta_k.min() * k_zero_mask     # offset delta_k (no negative k)
-k_field2_sign, k_field2_mag = split_into_sign_and_magnitude(k_field2)
-k_field2_mag = k_field2_mag + delta_k
-# print(k_field2_mag)
-k_field2_mag = k_field2_mag / np.ma.masked_equal(k_field2_mag, 0).min()
-k_field2_new = k_field2_sign * k_field2_mag
-print(k_field2_new)
+# Calculate new k
+k_field2_new = calculate_new_k_field(initial_h_field, k_field2, obs_field)
 
 # run gw_model with old and new k_field
 h_with_old_k = laplace_smooth_iter(initial_h_field, k_field2)
 h_with_new_k = laplace_smooth_iter(initial_h_field, k_field2_new)
 print(h_with_old_k)
 print(h_with_new_k)
-# plt.matshow(h_with_new_k - h_with_old_k)
-# plt.show()
+plt.matshow(h_with_new_k - h_with_old_k)
+plt.show()
 
 # Check errors
 pivot_new_h_field = h_with_new_k[pivots[0][0], pivots[0][1]]
 pivot_obs_field = obs_field[pivots[0][0], pivots[0][1]]
-print(pivot_new_h_field)
-print(pivot_obs_field)
+# print(pivot_new_h_field)
+# print(pivot_obs_field)
 diff = pivot_new_h_field - pivot_obs_field
-print(diff)
+# print(diff)
