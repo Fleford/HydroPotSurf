@@ -202,12 +202,14 @@ def calculate_new_k_field(h_matrix, k_matrix, obs_matrix):
     return k_matrix_new
 
 
+def input_matrix_to_parameter_matrices(input_matrix):
+    # Function for converting initial_input matrix into multiple gw parameter matrices
 
-
-
-
-# Function for converting initial_input matrix into multiple matrices
-
+    # Given x as an element within the input matrix:
+    # (x < 0) = constant-head cell
+    # (x = 0) = inactive cell
+    # (x = 1) = active cells
+    # (x > 1) = observed head (assumed an active cell)
 
 # Load in observation values
 obs_field = np.loadtxt("InputFolder/initial_heads.txt")
