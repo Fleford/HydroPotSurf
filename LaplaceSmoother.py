@@ -248,9 +248,15 @@ above_h_cell, belequal_h_cell = above_below_pivot_masks(new_h_field, h_pivot, k_
 
 # Create list of indexes for each observation head
 print(k_mask)
-print(np.argwhere(k_mask))
-print(k_mask[np.argwhere(k_mask)[0][0], np.argwhere(k_mask)[0][1]])
+pivots = np.argwhere(k_mask)
+# print(pivots)
 
+# grab head of pivot cell for calculated and observed head
+print(pivots[0])
+pivot_new_h_field = new_h_field[pivots[0][0], pivots[0][1]]
+pivot_obs_field = obs_field[pivots[0][0], pivots[0][1]]
+print(pivot_new_h_field)
+print(pivot_obs_field)
 
 
 # x = obs_field.reshape(-1)
