@@ -241,7 +241,7 @@ h_pivot = new_h_field[obs_ind[0][0], obs_ind[1][0]]
 # above_h_cell = np.ma.masked_greater(new_h_field, 10.1).mask*1*k_mask
 # belequal_h_cell = np.ma.masked_less_equal(new_h_field, 10.1).mask*1*k_mask
 
-above_h_cell, belequal_h_cell = above_below_pivot_masks(new_h_field, h_pivot, k_field)
+# above_h_cell, belequal_h_cell = above_below_pivot_masks(new_h_field, h_pivot, k_field)
 
 # print(above_h_cell)
 # print(belequal_h_cell)
@@ -251,13 +251,21 @@ print(k_mask)
 pivots = np.argwhere(k_mask)
 # print(pivots)
 
-# grab head of pivot cell for calculated and observed head
+# grab head of pivot cell for calculated and observed head. Calculate difference
 print(pivots[0])
 pivot_new_h_field = new_h_field[pivots[0][0], pivots[0][1]]
 pivot_obs_field = obs_field[pivots[0][0], pivots[0][1]]
 print(pivot_new_h_field)
 print(pivot_obs_field)
+diff = pivot_new_h_field - pivot_obs_field
+print(diff)
 
+# create the delta_k array
+above_h_cell, belequal_h_cell = above_below_pivot_masks(new_h_field, pivot_new_h_field, k_field)
+print(above_h_cell)
+print(belequal_h_cell)
+delta_k = above_h_cell * -1 + belequal_h_cell * 1
+print(delta_k)
 
 # x = obs_field.reshape(-1)
 # print(x)
