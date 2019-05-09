@@ -242,11 +242,3 @@ print(h_with_old_k)
 print(h_with_new_k)
 plt.matshow(h_with_new_k - h_with_old_k)
 plt.show()
-
-# Check errors
-pivot_new_h_field = h_with_new_k[pivots[0][0], pivots[0][1]]
-pivot_obs_field = obs_field[pivots[0][0], pivots[0][1]]
-# print(pivot_new_h_field)
-# print(pivot_obs_field)
-diff = pivot_new_h_field - pivot_obs_field
-# print(diff)
