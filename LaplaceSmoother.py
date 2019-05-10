@@ -225,31 +225,17 @@ def input_matrix_to_parameter_matrices(input_matrix):
     # obs_field
     obs_field = input_matrix.copy()
     obs_field[obs_field <= 1] = 0
-    print(obs_field)
+    # print(obs_field)
 
-
-
-    return None
+    return k_field_cnst_bnd, k_field_cnst_obs, obs_field
 
 
 # Load in initial input file
 initial_input = np.loadtxt("InputFolder/initial_input.txt")
-input_matrix_to_parameter_matrices(initial_input)
-
-# Load in observation values
-obs_field = np.loadtxt("InputFolder/initial_heads.txt")
+k_field_const_bnd, k_field_const_obs, obs_field = input_matrix_to_parameter_matrices(initial_input)
 h_field = obs_field.copy()
-# h_field = np.ones((10, 20))*10
-# Load k_field with parameters
-k_field_const_obs = np.loadtxt("InputFolder/k_field.txt")
-k_field2 = np.loadtxt("InputFolder/k_field2.txt")
-# k_field = np.absolute(k_field)
-one_at_neg_k = np.ma.masked_less(k_field_const_obs, 0).mask*1
-zero_at_neg_k = np.ma.masked_greater_equal(k_field_const_obs, 0).mask*1
-# print(one_at_neg_k)
-# print(zero_at_neg_k)
 
-initial_h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field2)
+initial_h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field_const_bnd)
 # levels = np.arange(np.amin(initial_h_field), np.amax(initial_h_field), 0.5)
 # initial_h_field[initial_h_field == 0] = np.nan
 # empty = np.zeros_like(initial_h_field)
@@ -259,10 +245,10 @@ initial_h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_fiel
 # plt.show()
 
 # Calculate new k
-k_field2_new = calculate_new_k_field(initial_h_field, k_field2, obs_field)
+k_field2_new = calculate_new_k_field(initial_h_field, k_field_const_bnd, obs_field)
 
 # run gw_model with old and new k_field
-h_with_old_k = laplace_smooth_iter(initial_h_field, k_field2)
+h_with_old_k = laplace_smooth_iter(initial_h_field, k_field_const_bnd)
 h_with_new_k = laplace_smooth_iter(initial_h_field, k_field2_new)
 # print(h_with_old_k)
 # print(h_with_new_k)
