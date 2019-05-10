@@ -233,6 +233,9 @@ def input_matrix_to_parameter_matrices(input_matrix):
 def iteratively_adjust_k(h_matrix, k_matrix, obs_matrix):
     # Iteratively adjusts the k_field until convergence is reached
 
+    # Setup previous error variable
+    previous_error = np.inf
+
     for x in range(10000):
         # Calculate new k matrix
         k_matrix_new = calculate_new_k_field(h_matrix, k_matrix, obs_matrix)
@@ -246,10 +249,15 @@ def iteratively_adjust_k(h_matrix, k_matrix, obs_matrix):
         h_error = (h_matrix_new - obs_matrix) * h_obs_mask
         h_error_abs = np.absolute(h_error)
         print(h_error_abs.max())
+        if h_error_abs.max() > previous_error:
+            break
 
         # Replace current k and h matrix
         k_matrix = k_matrix_new
         h_matrix = h_matrix_new
+
+        # Update error
+        previous_error = h_error_abs.max()
 
     return h_matrix, k_matrix
 
