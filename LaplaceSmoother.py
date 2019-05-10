@@ -233,20 +233,25 @@ def input_matrix_to_parameter_matrices(input_matrix):
 def iteratively_adjust_k(h_matrix, k_matrix, obs_matrix):
     # Iteratively adjusts the k_field until convergence is reached
 
-    for x in range(2):
+    for x in range(10000):
         # Calculate new k matrix
         k_matrix_new = calculate_new_k_field(h_matrix, k_matrix, obs_matrix)
 
         # Calculate new h matrix
         h_matrix_new = laplace_smooth_iter(h_matrix, k_matrix_new)
 
+        # Calculate maximum error
+        h_obs_mask = obs_matrix.copy()
+        h_obs_mask[h_obs_mask != 0] = 1
+        h_error = (h_matrix_new - obs_matrix) * h_obs_mask
+        h_error_abs = np.absolute(h_error)
+        print(h_error_abs.max())
+
         # Replace current k and h matrix
         k_matrix = k_matrix_new
         h_matrix = h_matrix_new
 
-
-
-    return None
+    return h_matrix, k_matrix
 
 
 # Load in matrices
@@ -268,12 +273,16 @@ h_with_new_k = laplace_smooth_iter(h_field, k_field2_new)
 # plt.show()
 
 # Iteratively adjust k
-iteratively_adjust_k(h_field, k_field, obs_field)
+new_h_field, new_k_field = iteratively_adjust_k(h_field, k_field, obs_field)
+print("hup!")
+print(new_h_field)
+print(new_k_field)
 
-# # Display current results
-# levels = np.arange(np.amin(h_field), np.amax(h_field), 0.5)
-# h_field[h_field == 0] = np.nan
-# plt.matshow(h_field)
-# plt.matshow(obs_field)
-# plt.contour(h_field, levels=levels)
-# plt.show()
+# Display current results
+levels = np.arange(np.amin(new_h_field), np.amax(new_h_field), 0.5)
+new_h_field[new_h_field == 0] = np.nan
+plt.matshow(new_h_field)
+plt.matshow(new_h_field - obs_field)
+plt.matshow(new_k_field)
+plt.contour(new_h_field, levels=levels)
+plt.show()
