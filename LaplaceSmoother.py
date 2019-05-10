@@ -230,26 +230,28 @@ def input_matrix_to_parameter_matrices(input_matrix):
     return k_field_cnst_bnd, k_field_cnst_obs, obs_field
 
 
-# Load in initial input file
+# Load in matrices
 initial_input = np.loadtxt("InputFolder/initial_input.txt")
-k_field_const_bnd, k_field_const_obs, obs_field = input_matrix_to_parameter_matrices(initial_input)
+k_field, k_field_const_obs, obs_field = input_matrix_to_parameter_matrices(initial_input)
 
-h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field_const_bnd)
-# levels = np.arange(np.amin(h_field), np.amax(h_field), 0.5)
-# h_field[h_field == 0] = np.nan
-# empty = np.zeros_like(h_field)
-# plt.matshow(h_field)
-# plt.matshow(obs_field)
-# plt.contour(h_field, levels=levels)
-# plt.show()
+# Calculate bnd heads and initial h field
+h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field)
 
 # Calculate new k
-k_field2_new = calculate_new_k_field(h_field, k_field_const_bnd, obs_field)
+k_field2_new = calculate_new_k_field(h_field, k_field, obs_field)
 
 # run gw_model with old and new k_field
-h_with_old_k = laplace_smooth_iter(h_field, k_field_const_bnd)
+h_with_old_k = laplace_smooth_iter(h_field, k_field)
 h_with_new_k = laplace_smooth_iter(h_field, k_field2_new)
 # print(h_with_old_k)
 # print(h_with_new_k)
-# plt.matshow(h_with_new_k - h_with_old_k)
+plt.matshow(h_with_new_k - h_with_old_k)
+plt.show()
+
+# # Display current results
+# levels = np.arange(np.amin(h_field), np.amax(h_field), 0.5)
+# h_field[h_field == 0] = np.nan
+# plt.matshow(h_field)
+# plt.matshow(obs_field)
+# plt.contour(h_field, levels=levels)
 # plt.show()
