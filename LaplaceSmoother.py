@@ -230,6 +230,25 @@ def input_matrix_to_parameter_matrices(input_matrix):
     return k_field_cnst_bnd, k_field_cnst_obs, obs_field
 
 
+def iteratively_adjust_k(h_matrix, k_matrix, obs_matrix):
+    # Iteratively adjusts the k_field until convergence is reached
+
+    for x in range(2):
+        # Calculate new k matrix
+        k_matrix_new = calculate_new_k_field(h_matrix, k_matrix, obs_matrix)
+
+        # Calculate new h matrix
+        h_matrix_new = laplace_smooth_iter(h_matrix, k_matrix_new)
+
+        # Replace current k and h matrix
+        k_matrix = k_matrix_new
+        h_matrix = h_matrix_new
+
+
+
+    return None
+
+
 # Load in matrices
 initial_input = np.loadtxt("InputFolder/initial_input.txt")
 k_field, k_field_const_obs, obs_field = input_matrix_to_parameter_matrices(initial_input)
@@ -245,8 +264,11 @@ h_with_old_k = laplace_smooth_iter(h_field, k_field)
 h_with_new_k = laplace_smooth_iter(h_field, k_field2_new)
 # print(h_with_old_k)
 # print(h_with_new_k)
-plt.matshow(h_with_new_k - h_with_old_k)
-plt.show()
+# plt.matshow(h_with_new_k - h_with_old_k)
+# plt.show()
+
+# Iteratively adjust k
+iteratively_adjust_k(h_field, k_field, obs_field)
 
 # # Display current results
 # levels = np.arange(np.amin(h_field), np.amax(h_field), 0.5)
