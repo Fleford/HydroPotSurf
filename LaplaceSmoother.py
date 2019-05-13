@@ -106,7 +106,7 @@ def adjust_h_field_to_fit_obs(h_matrix, obs_matrix, obs_mask, k_mask):
     return h_field_adjusted
 
 
-def calculate_boundary_values(obs_matrix, k_cnst_obs, k_cnst_bnd, convergence_threshold=0.001):
+def calculate_boundary_values(obs_matrix, k_cnst_obs, k_cnst_bnd):
     # Estimates the head values at the constant-head boundary
     # obs_matrix = Contains observation heads (zero at all other points)
     # k_cnst_obs = K field with -1 at constant-head boundary
