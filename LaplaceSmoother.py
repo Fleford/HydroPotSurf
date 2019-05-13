@@ -71,7 +71,42 @@ def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.001):
     return h_matrix
 
 
-def calculate_boundary_values(obs_matrix, k_cnst_obs, k_cnst_bnd):
+def adjust_h_field_to_fit_obs(h_matrix, obs_matrix, obs_mask, k_mask):
+    # Adjusts the h_field using linear transformations to fit data
+    # h_matrix = The h_field to be adjusted
+    # obs_matrix = Contains obs heads at certain cells. Remaining cells are set to zero
+    # obs_mask = Matrix with 1 at all cells with obs data, otherwise 0
+    # k_mask  = Matrix with 1 at nonzero k, else 0
+
+    # Cut out estimated observation heads from h_matrix
+    obs_h_from_h_matrix = h_matrix * obs_mask
+    obs_h_from_h_matrix = obs_h_from_h_matrix[obs_h_from_h_matrix != 0]
+    obs_h_from_h_matrix = obs_h_from_h_matrix.reshape(-1, 1)
+    # print(obs_h_from_h_matrix)
+
+    # Cut out measured observation heads from obs_matrix
+    obs_h_from_obs_matrix = obs_matrix * obs_mask
+    obs_h_from_obs_matrix = obs_h_from_obs_matrix[obs_h_from_obs_matrix != 0]
+    obs_h_from_obs_matrix = obs_h_from_obs_matrix.reshape(-1, 1)
+    # print(obs_h_from_obs_matrix)
+
+    # Find scale and offset values to fit calculated heads to observed heads (mx = y)
+    est_obs_matrix = np.concatenate((obs_h_from_h_matrix, np.ones_like(obs_h_from_h_matrix)), axis=1)
+    # print(est_obs_matrix)
+    scale_offset, res, rnk, s = lstsq(est_obs_matrix, obs_h_from_obs_matrix)
+    # print(scale_offset)
+    # print(est_obs_matrix.dot(scale_offset))
+
+    # Apply scale and offset values to h_field_cnst_bnd
+    h_field_adjusted = scale_offset[0]*h_matrix + scale_offset[1]
+
+    # Set the heads at no flow regions to zero
+    h_field_adjusted = h_field_adjusted * k_mask
+
+    return h_field_adjusted
+
+
+def calculate_boundary_values(obs_matrix, k_cnst_obs, k_cnst_bnd, convergence_threshold=0.001):
     # Estimates the head values at the constant-head boundary
     # obs_matrix = Contains observation heads (zero at all other points)
     # k_cnst_obs = K field with -1 at constant-head boundary
@@ -80,45 +115,56 @@ def calculate_boundary_values(obs_matrix, k_cnst_obs, k_cnst_bnd):
     # Make initial specified observation heads as a copy of obs_matrix
     spcfd_obs_h = obs_matrix.copy()
 
-    # Calculate constant-head boundary values, given specified observation heads
-    h_field_cnst_obs = laplace_smooth_iter(spcfd_obs_h, k_cnst_obs)
-
-    # Calculate observation values, given constant-head boundary values
-    h_field_cnst_bnd = laplace_smooth_iter(h_field_cnst_obs, k_cnst_bnd)
-
     # Make mask for observation heads (1 only at observation heads)
     obs_h_mask = k_cnst_obs.copy()
     obs_h_mask[obs_h_mask != -1] = 0
     obs_h_mask[obs_h_mask == -1] = 1
     # print(obs_h_mask)
 
-    # Cut out estimated observation heads from h_field_cnst_bnd
-    obs_h_from_bnds = h_field_cnst_bnd * obs_h_mask
-    obs_h_from_bnds = obs_h_from_bnds[obs_h_from_bnds != 0]
-    obs_h_from_bnds = obs_h_from_bnds.reshape(-1, 1)
-    # print(obs_h_from_bnds)
-
-    # Cut out measured observation heads from obs_matrix
-    obs_h_from_meas = obs_matrix * obs_h_mask
-    obs_h_from_meas = obs_h_from_meas[obs_h_from_meas != 0]
-    obs_h_from_meas = obs_h_from_meas.reshape(-1, 1)
-    # print(obs_h_from_meas)
-
-    # Find scale and offset values to fit calculated heads to observed heads (mx = y)
-    est_obs_matrix = np.concatenate((obs_h_from_bnds, np.ones_like(obs_h_from_bnds)), axis=1)
-    # print(est_obs_matrix)
-    scale_offset, res, rnk, s = lstsq(est_obs_matrix, obs_h_from_meas)
-    # print(scale_offset)
-    # print(est_obs_matrix.dot(scale_offset))
-
-    # Apply scale and offset values to h_field_cnst_bnd
-    h_field_cnst_bnd = scale_offset[0]*h_field_cnst_bnd + scale_offset[1]
-
-    # Set the heads at no flow regions to zero
+    # Make mask for zero k cells (1 at non-zero k, else 0)
     zero_k_mask = k_cnst_bnd.copy()
     zero_k_mask[zero_k_mask != 0] = 1
     # print(zero_k_mask)
-    h_field_cnst_bnd = h_field_cnst_bnd * zero_k_mask
+
+    # Make invert k_field (swap roles of active and specified cells)
+    k_cnst_bnd_inverted = k_cnst_bnd * -1
+
+    # Calculate constant-head boundary values, given specified observation heads
+    h_field_cnst_obs = laplace_smooth_iter(spcfd_obs_h, k_cnst_obs)
+
+    # Calculate observation values, given constant-head boundary values
+    h_field_cnst_bnd = laplace_smooth_iter(h_field_cnst_obs, k_cnst_bnd)
+
+    # Fit h field to observed heads
+    h_field_cnst_bnd = adjust_h_field_to_fit_obs(h_field_cnst_bnd, obs_matrix, obs_h_mask, zero_k_mask)
+
+    # Setup previous error variable
+    prev_max_diff = np.inf
+
+    # Start Loop
+    while True:
+        # Copy an unmodified version of the h field
+        h_field_cnst_bnd_old = h_field_cnst_bnd.copy()
+
+        # Calculate constant-head boundary values, given inverted k field
+        h_field_cnst_bnd = laplace_smooth_iter(h_field_cnst_bnd, k_cnst_bnd_inverted)
+
+        # Calculate h field, given new boundary values
+        h_field_cnst_bnd = laplace_smooth_iter(h_field_cnst_bnd, k_cnst_bnd)
+
+        # Fit h field to observed heads
+        h_field_cnst_bnd = adjust_h_field_to_fit_obs(h_field_cnst_bnd, obs_matrix, obs_h_mask, zero_k_mask)
+
+        # Calculate max change of h field
+        max_diff = np.max(h_field_cnst_bnd - h_field_cnst_bnd_old)
+
+        # Stop if the change is too small
+        print(max_diff)
+        if max_diff > prev_max_diff:
+            break
+
+        # Update error
+        prev_max_diff = max_diff
 
     # Return your hardwork
     return h_field_cnst_bnd
@@ -159,9 +205,10 @@ def split_into_sign_and_magnitude(matrix):
     return matrix_sign, matrix_magnitude
 
 
-def calculate_new_k_field(h_matrix, k_matrix, obs_matrix):
-    # Calculates a slight better k_matrix
+def calculate_new_k_field(h_matrix, k_matrix, obs_matrix, h_matrix_smooth):
+    # Calculates a slightly better k_matrix
     # Obs_matrix = zero at all values other than observation values
+    # h_matrix_smooth = first h_matrix made. Usually the smoothest. Used for pivot_mask making
 
     # Build index list for all observed heads
     obs_indexes = np.argwhere(obs_matrix)
@@ -176,6 +223,7 @@ def calculate_new_k_field(h_matrix, k_matrix, obs_matrix):
     # For each observation,
     for obs_index in obs_indexes:
         # Calculate difference between calculated and observed head
+        h_pivot = h_matrix_smooth[obs_index[0], obs_index[1]]
         h_calculated = h_matrix[obs_index[0], obs_index[1]]
         h_observed = obs_field[obs_index[0], obs_index[1]]
         h_diff = h_calculated - h_observed
@@ -184,7 +232,7 @@ def calculate_new_k_field(h_matrix, k_matrix, obs_matrix):
         h_diff_scaled = h_diff / (h_matrix.max() - h_matrix.min())
 
         # Create delta_k array
-        above_h_cal, below_or_equal_h_cal = above_below_pivot_masks(h_matrix, h_calculated, k_matrix)
+        above_h_cal, below_or_equal_h_cal = above_below_pivot_masks(h_matrix_smooth, h_pivot, k_matrix)
         delta_k = (above_h_cal * -1 + below_or_equal_h_cal * 1) * h_diff_scaled * zero_k_mask
 
         # Apply delta_k to the overall_delta_k
@@ -233,12 +281,16 @@ def input_matrix_to_parameter_matrices(input_matrix):
 def iteratively_adjust_k(h_matrix, k_matrix, obs_matrix):
     # Iteratively adjusts the k_field until convergence is reached
 
+    # Assume provided h_matrix is the smoothest
+    # Copy the original h_matrix
+    h_matrix_smooth = h_matrix.copy()
+
     # Setup previous error variable
     previous_error = np.inf
 
     for x in range(10000):
         # Calculate new k matrix
-        k_matrix_new = calculate_new_k_field(h_matrix, k_matrix, obs_matrix)
+        k_matrix_new = calculate_new_k_field(h_matrix, k_matrix, obs_matrix, h_matrix_smooth)
 
         # Calculate new h matrix
         h_matrix_new = laplace_smooth_iter(h_matrix, k_matrix_new)
@@ -269,28 +321,37 @@ k_field, k_field_const_obs, obs_field = input_matrix_to_parameter_matrices(initi
 # Calculate bnd heads and initial h field
 h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field)
 
-# Calculate new k
-k_field2_new = calculate_new_k_field(h_field, k_field, obs_field)
-
-# run gw_model with old and new k_field
-h_with_old_k = laplace_smooth_iter(h_field, k_field)
-h_with_new_k = laplace_smooth_iter(h_field, k_field2_new)
+# # Calculate new k
+# k_field2_new = calculate_new_k_field(h_field, k_field, obs_field, h_field)
+#
+# # run gw_model with old and new k_field
+# h_with_old_k = laplace_smooth_iter(h_field, k_field)
+# h_with_new_k = laplace_smooth_iter(h_field, k_field2_new)
 # print(h_with_old_k)
 # print(h_with_new_k)
 # plt.matshow(h_with_new_k - h_with_old_k)
 # plt.show()
 
-# Iteratively adjust k
-new_h_field, new_k_field = iteratively_adjust_k(h_field, k_field, obs_field)
-print("hup!")
-print(new_h_field)
-print(new_k_field)
+# # Iteratively adjust k
+# new_h_field, new_k_field = iteratively_adjust_k(h_field, k_field, obs_field)
+# print("hup!")
+# print(new_h_field)
+# print(new_k_field)
 
 # Display current results
-levels = np.arange(np.amin(new_h_field), np.amax(new_h_field), 0.5)
-new_h_field[new_h_field == 0] = np.nan
-plt.matshow(new_h_field)
-plt.matshow(new_h_field - obs_field)
-plt.matshow(new_k_field)
-plt.contour(new_h_field, levels=levels)
+levels = np.arange(np.amin(h_field), np.amax(h_field), 0.5)
+plt.matshow(h_field)
+# plt.matshow(new_h_field)
+# plt.matshow(new_h_field - obs_field)
+
+h_field[h_field == 0] = np.nan
+plt.matshow(k_field)
+plt.contour(h_field, levels=levels)
+
+# plt.matshow(new_k_field)
+# # empty = np.zeros_like(new_h_field)
+# # plt.matshow(empty, cmap="gray")
+# new_h_field[new_h_field == 0] = np.nan
+# plt.contour(new_h_field, levels=levels)
+
 plt.show()
