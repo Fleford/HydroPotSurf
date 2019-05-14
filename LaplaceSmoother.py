@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.linalg import lstsq
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 
 def shift_matrix(matrix, direction):
@@ -220,6 +221,10 @@ def calculate_new_k_field(h_matrix, k_matrix, obs_matrix, h_matrix_smooth):
     # Prepare mask for zero k
     zero_k_mask = np.ma.masked_not_equal(k_matrix, 0).mask * 1
 
+    # Prepare mask for observations
+    obs_mask = obs_matrix.copy()
+    obs_mask[obs_mask >= 1] = 1
+
     # For each observation,
     for obs_index in obs_indexes:
         # Calculate difference between calculated and observed head
@@ -236,10 +241,21 @@ def calculate_new_k_field(h_matrix, k_matrix, obs_matrix, h_matrix_smooth):
         delta_k = (above_h_cal * -1 + below_or_equal_h_cal * 1) * h_diff_scaled * zero_k_mask
 
         # Apply delta_k to the overall_delta_k
-        total_delta_k = total_delta_k + delta_k
+        total_delta_k = total_delta_k + delta_k * 2
+
+    # # Introduce bias for error distribution
+    # error_field = obs_mask * (h_matrix - obs_field)
+    # error_field = laplace_smooth_iter(error_field, k_matrix)
+    # error_field = np.absolute(error_field)
+    # error_field = error_field / error_field.max()
+    # total_delta_k = error_field * total_delta_k
 
     # Offset the delta_k so there are no negatives
     offset_total_delta_k = (total_delta_k - total_delta_k.min()) * zero_k_mask
+
+    # # Randomly remove adjustment factors
+    # rand_factor = np.random.randint(2, size=offset_total_delta_k.shape)
+    # offset_total_delta_k = offset_total_delta_k * rand_factor
 
     # Apply the total delta k to the k field
     k_matrix_sign, k_matrix_mag = split_into_sign_and_magnitude(k_matrix)
@@ -248,6 +264,50 @@ def calculate_new_k_field(h_matrix, k_matrix, obs_matrix, h_matrix_smooth):
     k_matrix_new = k_matrix_sign * k_matrix_mag
 
     return k_matrix_new
+
+
+def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix):
+    # Calculates a slightly better k_matrix by randomly changing the k field until it improves
+    # Obs_matrix = zero at all values other than observation values
+
+    # Prepare mask for observations
+    obs_mask = obs_matrix.copy()
+    obs_mask[obs_mask >= 1] = 1
+
+    # Calculate initial max error
+    h_error = obs_mask * (h_matrix - obs_matrix)
+    h_error = np.absolute(h_error)
+    max_h_error = h_error.max()
+    # print(max_h_error)
+
+    # Find a new k field
+    while True:
+        # Generate random delta k
+        delta_k = np.random.random(size=k_matrix.shape)
+        delta_k = (1.01 - 0.99) * delta_k + 0.99
+
+        # Apply delta k
+        trial_k_matrix = k_matrix * delta_k
+
+        # Calculate new heads
+        new_h_matrix = laplace_smooth_iter(h_matrix, trial_k_matrix)
+
+        # Calculate new error
+        new_h_error = obs_mask * (new_h_matrix - obs_matrix)
+        new_h_error = np.absolute(new_h_error)
+        new_max_h_error = new_h_error.max()
+        # print((new_max_h_error - max_h_error) * -1)
+
+        if new_max_h_error <= max_h_error:
+            break
+
+    # Report new error
+    print(new_max_h_error)
+
+    # Make new k_matrix
+    new_k_matrix = trial_k_matrix
+
+    return new_k_matrix
 
 
 def input_matrix_to_parameter_matrices(input_matrix):
@@ -275,7 +335,12 @@ def input_matrix_to_parameter_matrices(input_matrix):
     obs_field[obs_field <= 1] = 0
     # print(obs_field)
 
-    return k_field_cnst_bnd, k_field_cnst_obs, obs_field
+    # obs_mask
+    obs_mask = obs_field.copy()
+    obs_mask[obs_mask >= 1] = 1
+    # print(obs_mask)
+
+    return k_field_cnst_bnd, k_field_cnst_obs, obs_field, obs_mask
 
 
 def iteratively_adjust_k(h_matrix, k_matrix, obs_matrix):
@@ -316,42 +381,65 @@ def iteratively_adjust_k(h_matrix, k_matrix, obs_matrix):
 
 # Load in matrices
 initial_input = np.loadtxt("InputFolder/initial_input.txt")
-k_field, k_field_const_obs, obs_field = input_matrix_to_parameter_matrices(initial_input)
+k_field, k_field_const_obs, obs_field, obs_mask = input_matrix_to_parameter_matrices(initial_input)
 
 # Calculate bnd heads and initial h field
+print("Calculating boundary heads")
 h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field)
 
-# # Calculate new k
+# Calculate new k
+print("Calculating k field")
 # k_field2_new = calculate_new_k_field(h_field, k_field, obs_field, h_field)
-#
-# # run gw_model with old and new k_field
-# h_with_old_k = laplace_smooth_iter(h_field, k_field)
-# h_with_new_k = laplace_smooth_iter(h_field, k_field2_new)
-# print(h_with_old_k)
-# print(h_with_new_k)
-# plt.matshow(h_with_new_k - h_with_old_k)
-# plt.show()
+k_field2_new = k_field.copy()
+for run in range(2**11):
+    k_field2_new = calculate_new_k_field_randwalk(h_field, k_field2_new, obs_field)
+    h_field = laplace_smooth_iter(h_field, k_field2_new)
+
+
+# run gw_model with old and new k_field
+h_with_old_k = laplace_smooth_iter(h_field, k_field)
+h_with_new_k = laplace_smooth_iter(h_field, k_field2_new)
+plt.matshow(h_with_new_k - h_with_old_k)
+new_h_field = h_with_new_k
+plt.show()
 
 # # Iteratively adjust k
 # new_h_field, new_k_field = iteratively_adjust_k(h_field, k_field, obs_field)
-# print("hup!")
-# print(new_h_field)
-# print(new_k_field)
+# # print("hup!")
+# # print(new_h_field)
+# # print(new_k_field)
+
+# # Calculate error field
+# error_field = obs_mask * (new_h_field - obs_field)
+# error_field = laplace_smooth_iter(error_field, k_field_const_obs)
+# # error_field = error_field / (new_h_field.max() - new_h_field.min())
+# plt.matshow(error_field)
+# plt.show()
 
 # Display current results
-levels = np.arange(np.amin(h_field), np.amax(h_field), 0.5)
-plt.matshow(h_field)
+# levels = np.arange(np.amin(h_field), np.amax(h_field), 0.5)
+# plt.matshow(h_field)
 # plt.matshow(new_h_field)
 # plt.matshow(new_h_field - obs_field)
 
-h_field[h_field == 0] = np.nan
-plt.matshow(k_field)
-plt.contour(h_field, levels=levels)
+# Plot 3d Surface
+fig = plt.figure()
+ax = Axes3D(fig, azim=-128.0, elev=43.0)
+Z = np.array([[1, 2, 3],
+              [6, 5, 4]])
+new_h_field[new_h_field == 0] = np.nan
+Z = new_h_field
+X, Y = np.meshgrid(np.arange(Z.shape[1]), np.arange(Z.shape[0]))
+ax.plot_surface(X, Y, Z)
+plt.show()
+
+# h_field[h_field == 0] = np.nan
+# plt.matshow(k_field)
+# plt.contour(h_field, levels=levels)
 
 # plt.matshow(new_k_field)
 # # empty = np.zeros_like(new_h_field)
 # # plt.matshow(empty, cmap="gray")
-# new_h_field[new_h_field == 0] = np.nan
+# # new_h_field[new_h_field == 0] = np.nan
 # plt.contour(new_h_field, levels=levels)
-
-plt.show()
+# plt.show()
