@@ -307,7 +307,7 @@ def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix):
     # Make new k_matrix
     new_k_matrix = trial_k_matrix
 
-    return new_k_matrix
+    return new_k_matrix, new_max_h_error
 
 
 def input_matrix_to_parameter_matrices(input_matrix):
@@ -392,14 +392,17 @@ print("Calculating k field")
 # k_field2_new = calculate_new_k_field(h_field, k_field, obs_field, h_field)
 k_field2_new = k_field.copy()
 for run in range(2**11):
-    k_field2_new = calculate_new_k_field_randwalk(h_field, k_field2_new, obs_field)
+    k_field2_new, error = calculate_new_k_field_randwalk(h_field, k_field2_new, obs_field)
     h_field = laplace_smooth_iter(h_field, k_field2_new)
+    if error < 0.001:
+        break
 
 
 # run gw_model with old and new k_field
 h_with_old_k = laplace_smooth_iter(h_field, k_field)
 h_with_new_k = laplace_smooth_iter(h_field, k_field2_new)
-plt.matshow(h_with_new_k - h_with_old_k)
+# plt.matshow(h_with_new_k - h_with_old_k)
+plt.matshow(k_field2_new)
 new_h_field = h_with_new_k
 plt.show()
 
