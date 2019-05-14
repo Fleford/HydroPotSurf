@@ -274,11 +274,16 @@ def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix):
     obs_mask = obs_matrix.copy()
     obs_mask[obs_mask >= 1] = 1
 
+    # Prepare k zero mask
+    k_zero_mask = k_matrix.copy()
+    k_zero_mask[k_zero_mask != 0] = 1
+    # print(k_zero_mask)
+
     # Calculate initial max error
     h_error = obs_mask * (h_matrix - obs_matrix)
     h_error = np.absolute(h_error)
-    max_h_error = h_error.max()
-    # print(max_h_error)
+    h_error_sum = np.sum(h_error)
+    # print(h_error_sum)
 
     # Find a new k field
     while True:
@@ -295,19 +300,39 @@ def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix):
         # Calculate new error
         new_h_error = obs_mask * (new_h_matrix - obs_matrix)
         new_h_error = np.absolute(new_h_error)
-        new_max_h_error = new_h_error.max()
+        new_h_error_sum = np.sum(new_h_error)
         # print((new_max_h_error - max_h_error) * -1)
 
-        if new_max_h_error <= max_h_error:
+        # Exit if it's better
+        if new_h_error_sum <= h_error_sum:
             break
 
+        # # Generate opposite delta k
+        # delta_k = (np.ones_like(delta_k)*2 - delta_k) * k_zero_mask
+        #
+        # # Apply delta k
+        # trial_k_matrix = k_matrix * delta_k
+        #
+        # # Calculate new heads
+        # new_h_matrix = laplace_smooth_iter(h_matrix, trial_k_matrix)
+        #
+        # # Calculate new error
+        # new_h_error = obs_mask * (new_h_matrix - obs_matrix)
+        # new_h_error = np.absolute(new_h_error)
+        # new_h_error_sum = np.sum(new_h_error)
+        # # print((new_max_h_error - max_h_error) * -1)
+        #
+        # # Exit if it's better
+        # if new_h_error_sum <= h_error_sum:
+        #     break
+
     # Report new error
-    print(new_max_h_error)
+    print(new_h_error_sum)
 
     # Make new k_matrix
     new_k_matrix = trial_k_matrix
 
-    return new_k_matrix, new_max_h_error
+    return new_k_matrix, new_h_error_sum
 
 
 def input_matrix_to_parameter_matrices(input_matrix):
@@ -391,7 +416,7 @@ h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field)
 print("Calculating k field")
 # k_field2_new = calculate_new_k_field(h_field, k_field, obs_field, h_field)
 k_field2_new = k_field.copy()
-for run in range(2**11):
+for run in range(2**12):
     k_field2_new, error = calculate_new_k_field_randwalk(h_field, k_field2_new, obs_field)
     h_field = laplace_smooth_iter(h_field, k_field2_new)
     if error < 0.001:
