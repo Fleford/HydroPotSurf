@@ -373,16 +373,26 @@ def sign_matrix_for_k_adjustment(h_matrix, obs_matrix, obs_mask):
     # Add up all gradient signs
     h_obs_grad_sign = h_up_grad_sign + h_down_grad_sign + h_left_grad_sign + h_right_grad_sign
 
-    #
+    # Calculate h error signs
+    h_error = obs_matrix - h_matrix_center
+    h_error_sign = safe_divide(h_error, np.absolute(h_error))
 
+    # Spread h error to adjacent cells
+    h_error_sign_adj = shift_matrix_sum(h_error_sign)
+
+    # Combine h_gradient and h_error
+    k_delta_sign = h_obs_grad_sign * h_error_sign_adj
 
     plt.matshow(h_obs_grad_sign)
     plt.show()
 
+    plt.matshow(h_error_sign_adj)
+    plt.show()
 
+    plt.matshow(k_delta_sign)
+    plt.show()
 
-
-    return h_up_grad
+    return k_delta_sign
 
 
 def input_matrix_to_parameter_matrices(input_matrix):
