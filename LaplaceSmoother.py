@@ -212,64 +212,64 @@ def split_into_sign_and_magnitude(matrix):
     return matrix_sign, matrix_magnitude
 
 
-def calculate_new_k_field(h_matrix, k_matrix, obs_matrix, h_matrix_smooth):
-    # Calculates a slightly better k_matrix
-    # Obs_matrix = zero at all values other than observation values
-    # h_matrix_smooth = first h_matrix made. Usually the smoothest. Used for pivot_mask making
-
-    # Build index list for all observed heads
-    obs_indexes = np.argwhere(obs_matrix)
-    # print(obs_indexes)
-
-    # Prepare an empty delta_k matrix
-    total_delta_k = np.zeros_like(k_matrix)
-
-    # Prepare mask for zero k
-    zero_k_mask = np.ma.masked_not_equal(k_matrix, 0).mask * 1
-
-    # Prepare mask for observations
-    obs_mask = obs_matrix.copy()
-    obs_mask[obs_mask >= 1] = 1
-
-    # For each observation,
-    for obs_index in obs_indexes:
-        # Calculate difference between calculated and observed head
-        h_pivot = h_matrix_smooth[obs_index[0], obs_index[1]]
-        h_calculated = h_matrix[obs_index[0], obs_index[1]]
-        h_observed = obs_field[obs_index[0], obs_index[1]]
-        h_diff = h_calculated - h_observed
-
-        # Scale diff with min and max of h_field
-        h_diff_scaled = h_diff / (h_matrix.max() - h_matrix.min())
-
-        # Create delta_k array
-        above_h_cal, below_or_equal_h_cal = above_below_pivot_masks(h_matrix_smooth, h_pivot, k_matrix)
-        delta_k = (above_h_cal * -1 + below_or_equal_h_cal * 1) * h_diff_scaled * zero_k_mask
-
-        # Apply delta_k to the overall_delta_k
-        total_delta_k = total_delta_k + delta_k * 2
-
-    # # Introduce bias for error distribution
-    # error_field = obs_mask * (h_matrix - obs_field)
-    # error_field = laplace_smooth_iter(error_field, k_matrix)
-    # error_field = np.absolute(error_field)
-    # error_field = error_field / error_field.max()
-    # total_delta_k = error_field * total_delta_k
-
-    # Offset the delta_k so there are no negatives
-    offset_total_delta_k = (total_delta_k - total_delta_k.min()) * zero_k_mask
-
-    # # Randomly remove adjustment factors
-    # rand_factor = np.random.randint(2, size=offset_total_delta_k.shape)
-    # offset_total_delta_k = offset_total_delta_k * rand_factor
-
-    # Apply the total delta k to the k field
-    k_matrix_sign, k_matrix_mag = split_into_sign_and_magnitude(k_matrix)
-    k_matrix_mag = k_matrix_mag + offset_total_delta_k
-    k_matrix_mag = k_matrix_mag / np.ma.masked_equal(k_matrix_mag, 0).min()  # Scale k so that min = 1
-    k_matrix_new = k_matrix_sign * k_matrix_mag
-
-    return k_matrix_new
+# def calculate_new_k_field(h_matrix, k_matrix, obs_matrix, h_matrix_smooth):
+#     # Calculates a slightly better k_matrix
+#     # Obs_matrix = zero at all values other than observation values
+#     # h_matrix_smooth = first h_matrix made. Usually the smoothest. Used for pivot_mask making
+#
+#     # Build index list for all observed heads
+#     obs_indexes = np.argwhere(obs_matrix)
+#     # print(obs_indexes)
+#
+#     # Prepare an empty delta_k matrix
+#     total_delta_k = np.zeros_like(k_matrix)
+#
+#     # Prepare mask for zero k
+#     zero_k_mask = np.ma.masked_not_equal(k_matrix, 0).mask * 1
+#
+#     # Prepare mask for observations
+#     obs_mask = obs_matrix.copy()
+#     obs_mask[obs_mask >= 1] = 1
+#
+#     # For each observation,
+#     for obs_index in obs_indexes:
+#         # Calculate difference between calculated and observed head
+#         h_pivot = h_matrix_smooth[obs_index[0], obs_index[1]]
+#         h_calculated = h_matrix[obs_index[0], obs_index[1]]
+#         h_observed = obs_field[obs_index[0], obs_index[1]]
+#         h_diff = h_calculated - h_observed
+#
+#         # Scale diff with min and max of h_field
+#         h_diff_scaled = h_diff / (h_matrix.max() - h_matrix.min())
+#
+#         # Create delta_k array
+#         above_h_cal, below_or_equal_h_cal = above_below_pivot_masks(h_matrix_smooth, h_pivot, k_matrix)
+#         delta_k = (above_h_cal * -1 + below_or_equal_h_cal * 1) * h_diff_scaled * zero_k_mask
+#
+#         # Apply delta_k to the overall_delta_k
+#         total_delta_k = total_delta_k + delta_k * 2
+#
+#     # # Introduce bias for error distribution
+#     # error_field = obs_mask * (h_matrix - obs_field)
+#     # error_field = laplace_smooth_iter(error_field, k_matrix)
+#     # error_field = np.absolute(error_field)
+#     # error_field = error_field / error_field.max()
+#     # total_delta_k = error_field * total_delta_k
+#
+#     # Offset the delta_k so there are no negatives
+#     offset_total_delta_k = (total_delta_k - total_delta_k.min()) * zero_k_mask
+#
+#     # # Randomly remove adjustment factors
+#     # rand_factor = np.random.randint(2, size=offset_total_delta_k.shape)
+#     # offset_total_delta_k = offset_total_delta_k * rand_factor
+#
+#     # Apply the total delta k to the k field
+#     k_matrix_sign, k_matrix_mag = split_into_sign_and_magnitude(k_matrix)
+#     k_matrix_mag = k_matrix_mag + offset_total_delta_k
+#     k_matrix_mag = k_matrix_mag / np.ma.masked_equal(k_matrix_mag, 0).min()  # Scale k so that min = 1
+#     k_matrix_new = k_matrix_sign * k_matrix_mag
+#
+#     return k_matrix_new
 
 
 def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix, k_of_k_matrix):
@@ -294,9 +294,13 @@ def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix, k_of_k_matrix
 
     # Find a new k field
     while True:
-        # Generate random delta k
-        delta_k = np.random.random(size=k_matrix.shape)
-        delta_k = (1.1 - 0.9) * delta_k + 0.9
+        # # Generate random delta k (undirected)
+        # delta_k = np.random.random(size=k_matrix.shape)
+        # delta_k = (1.1 - 0.9) * delta_k + 0.9
+
+        # Generate random delta k (directed)
+        delta_k_sign = sign_matrix_for_k_adjustment(h_matrix, obs_matrix, obs_mask)
+        delta_k = (0.1 * delta_k_sign * np.random.random(size=k_matrix.shape)) + np.ones_like(k_matrix)
 
         # Apply delta k
         trial_k_matrix = k_matrix * delta_k
@@ -382,15 +386,6 @@ def sign_matrix_for_k_adjustment(h_matrix, obs_matrix, obs_mask):
 
     # Combine h_gradient and h_error
     k_delta_sign = h_obs_grad_sign * h_error_sign_adj
-
-    plt.matshow(h_obs_grad_sign)
-    plt.show()
-
-    plt.matshow(h_error_sign_adj)
-    plt.show()
-
-    plt.matshow(k_delta_sign)
-    plt.show()
 
     return k_delta_sign
 
@@ -487,16 +482,16 @@ h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field)
 print()
 print("Calculating delta k matrix")
 result = sign_matrix_for_k_adjustment(h_field, obs_field, obs_mask)
-print(result)
+# print(result)
 
 print()
 print("Calculating k field")
 # print(k_field_const_obs)
 k_field2_new = k_field.copy()
 for run in range(2**13):
-    k_field2_new, error = calculate_new_k_field_randwalk(h_field, k_field2_new, obs_field, k_field_const_obs)
+    k_field2_new, error = calculate_new_k_field_randwalk(h_field, k_field2_new, obs_field, k_field_const_adj)
     h_field = laplace_smooth_iter(h_field, k_field2_new)
-    if error < 0.6:
+    if error < 0.1:
         break
 winsound.Beep(2500, 2500)
 
