@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import winsound
 
+
 def shift_matrix(matrix, direction):
     # Shifts a 2d matrix in a direction and pads with zeros
     if direction == "up":
@@ -346,6 +347,44 @@ def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix, k_of_k_matrix
     return new_k_matrix, h_error_max
 
 
+def sign_matrix_for_k_adjustment(h_matrix, obs_matrix, obs_mask):
+    # A function that return a matrix with -1, 0 or 1 depending on a how the k field should be adjusted
+
+    # Prep values
+    h_matrix_center = h_matrix.copy() * obs_mask
+    h_matrix_up = h_matrix.copy() * shift_matrix(obs_mask, "up")
+    h_matrix_down = h_matrix.copy() * shift_matrix(obs_mask, "down")
+    h_matrix_left = h_matrix.copy() * shift_matrix(obs_mask, "left")
+    h_matrix_right = h_matrix.copy() * shift_matrix(obs_mask, "right")
+
+    # Calculate h gradient signs
+    h_up_grad = h_matrix_up - shift_matrix(h_matrix_center, "up")
+    h_up_grad_sign = safe_divide(h_up_grad, np.absolute(h_up_grad))
+
+    h_down_grad = h_matrix_down - shift_matrix(h_matrix_center, "down")
+    h_down_grad_sign = safe_divide(h_down_grad, np.absolute(h_down_grad))
+
+    h_left_grad = h_matrix_left - shift_matrix(h_matrix_center, "left")
+    h_left_grad_sign = safe_divide(h_left_grad, np.absolute(h_left_grad))
+
+    h_right_grad = h_matrix_right - shift_matrix(h_matrix_center, "right")
+    h_right_grad_sign = safe_divide(h_right_grad, np.absolute(h_right_grad))
+
+    # Add up all gradient signs
+    h_obs_grad_sign = h_up_grad_sign + h_down_grad_sign + h_left_grad_sign + h_right_grad_sign
+
+    #
+
+
+    plt.matshow(h_obs_grad_sign)
+    plt.show()
+
+
+
+
+    return h_up_grad
+
+
 def input_matrix_to_parameter_matrices(input_matrix):
     # Function for converting initial_input matrix into multiple gw parameter matrices
 
@@ -436,15 +475,20 @@ h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field)
 
 # Calculate new k
 print()
+print("Calculating delta k matrix")
+result = sign_matrix_for_k_adjustment(h_field, obs_field, obs_mask)
+print(result)
+
+print()
 print("Calculating k field")
 # print(k_field_const_obs)
 k_field2_new = k_field.copy()
 for run in range(2**13):
-    k_field2_new, error = calculate_new_k_field_randwalk(h_field, k_field2_new, obs_field, k_field_const_adj)
+    k_field2_new, error = calculate_new_k_field_randwalk(h_field, k_field2_new, obs_field, k_field_const_obs)
     h_field = laplace_smooth_iter(h_field, k_field2_new)
-    if error < 0.1:
+    if error < 0.6:
         break
-winsound.Beep(2500, 1000)
+winsound.Beep(2500, 2500)
 
 # # run gw_model with old and new k_field
 # h_with_old_k = laplace_smooth_iter(h_field, k_field)
@@ -468,7 +512,7 @@ plt.show()
 # plt.show()
 
 # Display current results
-levels = np.arange(np.amin(h_field), np.amax(h_field), 0.5)
+levels = np.arange(np.amin(h_field), np.amax(h_field), 0.2)
 # plt.matshow(h_field)
 # plt.matshow(new_h_field)
 # plt.matshow(new_h_field - obs_field)
