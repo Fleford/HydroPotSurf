@@ -39,7 +39,7 @@ def laplace_smooth(h_matrix, k_matrix):
     return new_hk_matrix
 
 
-def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.001):
+def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.0001):
     # Performs a number of iterations of Laplace smoothing
     # h_matrix = np.ones_like(h_matrix) * h_field.max()
 
@@ -300,7 +300,7 @@ def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix, k_of_k_matrix
 
         # Generate random delta k (directed)
         delta_k_sign = sign_matrix_for_k_adjustment(h_matrix, obs_matrix, obs_mask)
-        delta_k = (0.1 * delta_k_sign * np.random.random(size=k_matrix.shape)) + np.ones_like(k_matrix)
+        delta_k = (0.001 * delta_k_sign * np.random.random(size=k_matrix.shape)) + np.ones_like(k_matrix)
 
         # Apply delta k
         trial_k_matrix = k_matrix * delta_k
@@ -491,7 +491,7 @@ k_field2_new = k_field.copy()
 for run in range(2**13):
     k_field2_new, error = calculate_new_k_field_randwalk(h_field, k_field2_new, obs_field, k_field_const_adj)
     h_field = laplace_smooth_iter(h_field, k_field2_new)
-    if error < 0.1:
+    if error < 0.001:
         break
 winsound.Beep(2500, 2500)
 
