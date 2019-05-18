@@ -317,7 +317,7 @@ def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix, k_of_k_matrix
         new_h_error = obs_mask * (new_h_matrix - obs_matrix)
         new_h_error = np.absolute(new_h_error)
         new_h_error_max = new_h_error.max()
-        print((new_h_error_max - h_error_max) * -1)
+        # print((new_h_error_max - h_error_max) * -1)
 
         # Exit if it's better
         if new_h_error_max <= h_error_max:
