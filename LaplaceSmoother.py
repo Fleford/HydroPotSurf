@@ -290,38 +290,41 @@ def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix, k_of_k_matrix
     h_error = obs_mask * (h_matrix - obs_matrix)
     h_error = np.absolute(h_error)
     h_error_max = h_error.max()
-    print(h_error_max)
+    # print(h_error_max)
 
     # Find a new k field
-    while True:
-        # # Generate random delta k (undirected)
-        # delta_k = np.random.random(size=k_matrix.shape)
-        # delta_k = (1.1 - 0.9) * delta_k + 0.9
+    # im_stuck_flag = True  # Assume that ur stuck
+    # for x in range(1):
+    # # Generate random delta k (undirected)
+    # delta_k = np.random.random(size=k_matrix.shape)
+    # delta_k = (1.1 - 0.9) * delta_k + 0.9
 
-        # Generate random delta k (directed)
-        delta_k_sign = sign_matrix_for_k_adjustment(h_matrix, obs_matrix, obs_mask)
-        delta_k = (0.001 * delta_k_sign * np.random.random(size=k_matrix.shape)) + np.ones_like(k_matrix)
+    # Generate random delta k (directed)
+    delta_k_sign = sign_matrix_for_k_adjustment(h_matrix, obs_matrix, obs_mask)
+    # delta_k = (0.01 * delta_k_sign * np.random.random(size=k_matrix.shape)) + np.ones_like(k_matrix)
+    delta_k = (0.001 * delta_k_sign) + np.ones_like(k_matrix)
 
-        # Apply delta k
-        trial_k_matrix = k_matrix * delta_k
+    # Apply delta k
+    trial_k_matrix = k_matrix * delta_k
 
-        # Laplace smooth the k field
-        trial_k_matrix_sign, trial_k_matrix_mag = split_into_sign_and_magnitude(trial_k_matrix)
-        trial_k_matrix_mag = laplace_smooth_iter(trial_k_matrix_mag, k_of_k_matrix)
-        trial_k_matrix = trial_k_matrix_sign * trial_k_matrix_mag
+    # Laplace smooth the k field
+    trial_k_matrix_sign, trial_k_matrix_mag = split_into_sign_and_magnitude(trial_k_matrix)
+    trial_k_matrix_mag = laplace_smooth_iter(trial_k_matrix_mag, k_of_k_matrix)
+    trial_k_matrix = trial_k_matrix_sign * trial_k_matrix_mag
 
-        # Calculate new heads
-        new_h_matrix = laplace_smooth_iter(h_matrix, trial_k_matrix)
+    # Calculate new heads
+    new_h_matrix = laplace_smooth_iter(h_matrix, trial_k_matrix)
 
-        # Calculate new error
-        new_h_error = obs_mask * (new_h_matrix - obs_matrix)
-        new_h_error = np.absolute(new_h_error)
-        new_h_error_max = new_h_error.max()
-        # print((new_h_error_max - h_error_max) * -1)
+    # Calculate new error
+    new_h_error = obs_mask * (new_h_matrix - obs_matrix)
+    new_h_error = np.absolute(new_h_error)
+    new_h_error_max = new_h_error.max()
+    # print((new_h_error_max - h_error_max) * -1)
 
-        # Exit if it's better
-        if new_h_error_max <= h_error_max:
-            break
+    # # Exit if it's better
+    # if new_h_error_max <= h_error_max:
+    #     im_stuck_flag = False
+    #     break
 
         # # Generate opposite delta k
         # delta_k = (np.ones_like(delta_k)*2 - delta_k) * k_zero_mask
@@ -341,6 +344,10 @@ def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix, k_of_k_matrix
         # # Exit if it's better
         # if new_h_error_sum <= h_error_sum:
         #     break
+
+    # # Report if was stuck
+    # if im_stuck_flag:
+    #     print("I was stuck!")
 
     # Report new error
     print(h_error_max)
@@ -488,7 +495,7 @@ print()
 print("Calculating k field")
 # print(k_field_const_obs)
 k_field2_new = k_field.copy()
-for run in range(2**13):
+for run in range(2**18):
     k_field2_new, error = calculate_new_k_field_randwalk(h_field, k_field2_new, obs_field, k_field_const_adj)
     h_field = laplace_smooth_iter(h_field, k_field2_new)
     if error < 0.001:
