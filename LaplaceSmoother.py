@@ -3,6 +3,7 @@ from scipy.linalg import lstsq
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import winsound
+import time
 
 
 def shift_matrix(matrix, direction):
@@ -272,7 +273,7 @@ def split_into_sign_and_magnitude(matrix):
 #     return k_matrix_new
 
 
-def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix, k_of_k_matrix):
+def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix, k_of_k_matrix, step_scale=0.1):
     # Calculates a slightly better k_matrix by randomly changing the k field until it improves
     # Obs_matrix = zero at all values other than observation values
     # k_of_k_matrix = the k field used to smooth the k_matrix
@@ -289,7 +290,7 @@ def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix, k_of_k_matrix
     # Calculate initial max error
     h_error = obs_mask * (h_matrix - obs_matrix)
     h_error = np.absolute(h_error)
-    h_error_max = h_error.max()
+    h_error_sum = np.sum(h_error)
     # print(h_error_max)
 
     # Find a new k field
@@ -302,7 +303,7 @@ def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix, k_of_k_matrix
     # Generate random delta k (directed)
     delta_k_sign = sign_matrix_for_k_adjustment(h_matrix, obs_matrix, obs_mask)
     # delta_k = (0.01 * delta_k_sign * np.random.random(size=k_matrix.shape)) + np.ones_like(k_matrix)
-    delta_k = (0.001 * delta_k_sign) + np.ones_like(k_matrix)
+    delta_k = (step_scale * delta_k_sign) + np.ones_like(k_matrix)
 
     # Apply delta k
     trial_k_matrix = k_matrix * delta_k
@@ -318,7 +319,7 @@ def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix, k_of_k_matrix
     # Calculate new error
     new_h_error = obs_mask * (new_h_matrix - obs_matrix)
     new_h_error = np.absolute(new_h_error)
-    new_h_error_max = new_h_error.max()
+    new_h_error_sum = np.sum(new_h_error)
     # print((new_h_error_max - h_error_max) * -1)
 
     # # Exit if it's better
@@ -350,12 +351,12 @@ def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix, k_of_k_matrix
     #     print("I was stuck!")
 
     # Report new error
-    print(h_error_max)
+    # print(h_error_max)
 
     # Make new k_matrix
     new_k_matrix = trial_k_matrix
 
-    return new_k_matrix, h_error_max
+    return new_k_matrix, new_h_error_sum
 
 
 def sign_matrix_for_k_adjustment(h_matrix, obs_matrix, obs_mask):
@@ -481,6 +482,7 @@ initial_input = np.loadtxt("InputFolder/initial_input.txt")
 k_field, k_field_const_obs, obs_field, obs_mask, k_field_const_adj = input_matrix_to_parameter_matrices(initial_input)
 
 winsound.Beep(2500, 100)
+
 # Calculate bnd heads and initial h field
 print("Calculating boundary heads")
 h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field)
@@ -492,15 +494,57 @@ result = sign_matrix_for_k_adjustment(h_field, obs_field, obs_mask)
 # print(result)
 
 print()
-print("Calculating k field")
+print("Calculating k field...")
+start_time = time.time()
 # print(k_field_const_obs)
 k_field2_new = k_field.copy()
+h_field_old = h_field
+error_old = np.inf
+scale_value = 0.1
+pos_count = 0
+pos_max = 1 / scale_value
+avg_diff = 0
+diff = 0
+sign_list = np.array([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
 for run in range(2**18):
-    k_field2_new, error = calculate_new_k_field_randwalk(h_field, k_field2_new, obs_field, k_field_const_adj)
+    k_field2_new, error = calculate_new_k_field_randwalk(h_field, k_field2_new, obs_field, k_field_const_adj,
+                                                         step_scale=scale_value)
     h_field = laplace_smooth_iter(h_field, k_field2_new)
+    # print(np.max(np.absolute(h_field - h_field_old)))
+    print(error)
+    if error > error_old:
+        pos_count += 1
+
+    if pos_count >= pos_max:
+        pos_count = 0
+        scale_value = scale_value / 10
+        pos_max = pos_max * 10
+        print("Scale value changed to " + str(scale_value))
+
+
+    sign_list = np.append(sign_list, diff)
+    sign_list = sign_list[1:]
+    # print(np.sum(sign_list))
+    # print(sign_list)
+
+    # if np.sum(sign_list) == 2:
+    #     scale_value = scale_value / 10
+    #     print("Scale value changed to " + str(scale_value))
+    #     sign_list = np.array([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
+
+    # if error > error_old:
+    #     scale_value = scale_value / 10
+    #     print("Scale value changed to " + str(scale_value))
+    error_old = error
+
+    h_field_old = h_field
     if error < 0.001:
         break
+end_time = time.time()
 winsound.Beep(2500, 2500)
+
+print()
+print("Seconds elapsed: " + str(end_time - start_time))
 
 # # run gw_model with old and new k_field
 # h_with_old_k = laplace_smooth_iter(h_field, k_field)
