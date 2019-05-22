@@ -40,7 +40,7 @@ def laplace_smooth(h_matrix, k_matrix):
     return new_hk_matrix
 
 
-def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.0001):
+def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.001):
     # Performs a number of iterations of Laplace smoothing
     # h_matrix = np.ones_like(h_matrix) * h_field.max()
 
@@ -109,7 +109,7 @@ def adjust_h_field_to_fit_obs(h_matrix, obs_matrix, obs_mask, k_mask):
     return h_field_adjusted
 
 
-def calculate_boundary_values(obs_matrix, k_cnst_obs, k_cnst_bnd, convergence_threshold=0.001):
+def calculate_boundary_values(obs_matrix, k_cnst_obs, k_cnst_bnd, convergence_threshold=0.01):
     # Estimates the head values at the constant-head boundary
     # obs_matrix = Contains observation heads (zero at all other points)
     # k_cnst_obs = K field with -1 at constant-head boundary
@@ -310,6 +310,7 @@ def calculate_new_k_field_randwalk(h_matrix, k_matrix, obs_matrix, k_of_k_matrix
 
     # Laplace smooth the k field
     trial_k_matrix_sign, trial_k_matrix_mag = split_into_sign_and_magnitude(trial_k_matrix)
+    trial_k_matrix_mag = np.clip(trial_k_matrix_mag, 0.1, 10)
     trial_k_matrix_mag = laplace_smooth_iter(trial_k_matrix_mag, k_of_k_matrix)
     trial_k_matrix = trial_k_matrix_sign * trial_k_matrix_mag
 
@@ -498,8 +499,9 @@ print("Calculating k field...")
 start_time = time.time()
 # print(k_field_const_obs)
 k_field2_new = k_field.copy()
-h_field_old = h_field
+h_field_old = h_field.copy()
 error_old = np.inf
+error_best = np.inf
 scale_value = 0.1
 pos_count = 0
 pos_max = 1 / scale_value
@@ -520,6 +522,7 @@ for run in range(2**18):
         scale_value = scale_value / 10
         pos_max = pos_max * 10
         print("Scale value changed to " + str(scale_value))
+        print(error)
 
 
     sign_list = np.append(sign_list, diff)
@@ -538,10 +541,15 @@ for run in range(2**18):
     error_old = error
 
     h_field_old = h_field
-    if error < 0.001:
+    # if error < 0.000001:
+    #     break
+    if scale_value < 0.001:
         break
 end_time = time.time()
 winsound.Beep(2500, 2500)
+
+print()
+print("Best error: " + str(error_best))
 
 print()
 print("Seconds elapsed: " + str(end_time - start_time))
