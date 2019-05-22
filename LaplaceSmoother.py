@@ -500,6 +500,7 @@ start_time = time.time()
 # print(k_field_const_obs)
 k_field2_new = k_field.copy()
 h_field_old = h_field.copy()
+h_field_best = h_field.copy()
 error_old = np.inf
 error_best = np.inf
 scale_value = 0.1
@@ -516,6 +517,11 @@ for run in range(2**18):
     print(error)
     if error > error_old:
         pos_count += 1
+
+    if error < error_best:
+        error_best = error
+        k_field_best = k_field2_new
+        h_field_best = h_field
 
     if pos_count >= pos_max:
         pos_count = 0
@@ -547,6 +553,9 @@ for run in range(2**18):
         break
 end_time = time.time()
 winsound.Beep(2500, 2500)
+
+h_field = h_field_best
+k_field = k_field2_new
 
 print()
 print("Best error: " + str(error_best))
