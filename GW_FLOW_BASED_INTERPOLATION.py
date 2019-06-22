@@ -5,6 +5,9 @@ from mpl_toolkits.mplot3d import Axes3D
 import winsound
 import time
 
+# The goal is to write program that can generate a gw surface,
+# given boundary geometry, boundary condition and data points
+
 
 def shift_matrix(matrix, direction):
     # Shifts a 2d matrix in a direction and pads with zeros
