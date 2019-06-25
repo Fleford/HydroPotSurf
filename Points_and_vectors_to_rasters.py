@@ -3,8 +3,8 @@ import numpy as np
 # The goal is to convert points or vectors into rasters with lines or polygons
 
 array = np.zeros((11, 11))
-coord_start = np.array([8, 7])
-coord_end = np.array([1, 6])
+coord_start = np.array([5, 8])
+coord_end = np.array([6, 1])
 
 array[tuple(coord_start)] = 1
 array[tuple(coord_end)] = 2
@@ -34,7 +34,6 @@ if np.abs(dx_dy[0]) > np.abs(dx_dy[1]):
         x_position += (dx_dy[0] / np.abs(dx_dy[0])).astype(int)
     list_of_cells.append(tuple(coord_end))
 else:
-    print("flip x and y")
     m = dx_dy[0] / dx_dy[1]
     x = lambda y: m * (y - coord_start[1]) + coord_start[0]
     list_of_cells.append(tuple(coord_start))
