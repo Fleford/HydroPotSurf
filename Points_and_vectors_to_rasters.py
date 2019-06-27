@@ -50,24 +50,49 @@ def list_all_intersected_cells(coord_start, coord_end):
 def point_array_list_all_intersected_cells(point_array):
     # Given multiple points, this functions draws a line between two adjacent points.
     # The function then returns a list of all intersected cells
-    return None
 
+    whole_list_of_cells = []
+
+    for line in range(len(point_array) - 2):
+        # Add in intersected points for the given line
+        intermediate_list_of_cells = list_all_intersected_cells(point_array[0], point_array[1])
+
+        # Remove the last element to prevent redundancy
+        intermediate_list_of_cells = intermediate_list_of_cells[:-1]
+
+        # Append the result to the grand list
+        for element in intermediate_list_of_cells:
+            whole_list_of_cells.append(element)
+
+    # Add in the last line with the last point included
+    final_list_of_cells = list_all_intersected_cells(point_array[-2], point_array[-1])
+
+    # Append the result to the grand list
+    for element in final_list_of_cells:
+        whole_list_of_cells.append(element)
+
+    return whole_list_of_cells
 
 
 array = np.zeros((11, 11))
 start_point = np.array([0, 0])
-intermediate_point = np.array([3, 3])
-end_point = np.array([5, 5])
+intermediate_point = np.array([5, 3])
+end_point = np.array([3, 5])
+all_points = np.array([start_point, intermediate_point, end_point])
+print(all_points)
+
+alist = point_array_list_all_intersected_cells(all_points)
 
 array[tuple(start_point)] = 1
 array[tuple(end_point)] = 2
 
+
 list = list_all_intersected_cells(start_point, end_point)
 
 # Add points to matrix
-for coord in list:
+for coord in alist:
     array[coord] = 3
 
-print(list)
+print(alist)
 print(array)
 
