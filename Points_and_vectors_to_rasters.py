@@ -47,8 +47,16 @@ def list_all_intersected_cells(coord_start, coord_end):
     return list_of_cells
 
 
+def point_array_list_all_intersected_cells(point_array):
+    # Given multiple points, this functions draws a line between two adjacent points.
+    # The function then returns a list of all intersected cells
+    return None
+
+
+
 array = np.zeros((11, 11))
 start_point = np.array([0, 0])
+intermediate_point = np.array([3, 3])
 end_point = np.array([5, 5])
 
 array[tuple(start_point)] = 1
