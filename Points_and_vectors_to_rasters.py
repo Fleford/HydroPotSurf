@@ -1,5 +1,6 @@
 import numpy as np
 import sys
+from GW_FLOW_BASED_INTERPOLATION import shift_matrix
 
 # The goal is to convert points or vectors into rasters with lines or polygons
 

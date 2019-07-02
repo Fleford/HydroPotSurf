@@ -445,40 +445,40 @@ def input_matrix_to_parameter_matrices(input_matrix):
     return k_field_cnst_bnd, k_field_cnst_obs, obs_field, obs_mask, k_field_cnst_adj
 
 
-def iteratively_adjust_k(h_matrix, k_matrix, obs_matrix):
-    # Iteratively adjusts the k_field until convergence is reached
-
-    # Assume provided h_matrix is the smoothest
-    # Copy the original h_matrix
-    h_matrix_smooth = h_matrix.copy()
-
-    # Setup previous error variable
-    previous_error = np.inf
-
-    for x in range(10000):
-        # Calculate new k matrix
-        k_matrix_new = calculate_new_k_field(h_matrix, k_matrix, obs_matrix, h_matrix_smooth)
-
-        # Calculate new h matrix
-        h_matrix_new = laplace_smooth_iter(h_matrix, k_matrix_new)
-
-        # Calculate maximum error
-        h_obs_mask = obs_matrix.copy()
-        h_obs_mask[h_obs_mask != 0] = 1
-        h_error = (h_matrix_new - obs_matrix) * h_obs_mask
-        h_error_abs = np.absolute(h_error)
-        print(h_error_abs.max())
-        if h_error_abs.max() > previous_error:
-            break
-
-        # Replace current k and h matrix
-        k_matrix = k_matrix_new
-        h_matrix = h_matrix_new
-
-        # Update error
-        previous_error = h_error_abs.max()
-
-    return h_matrix, k_matrix
+# def iteratively_adjust_k(h_matrix, k_matrix, obs_matrix):
+#     # Iteratively adjusts the k_field until convergence is reached
+#
+#     # Assume provided h_matrix is the smoothest
+#     # Copy the original h_matrix
+#     h_matrix_smooth = h_matrix.copy()
+#
+#     # Setup previous error variable
+#     previous_error = np.inf
+#
+#     for x in range(10000):
+#         # Calculate new k matrix
+#         k_matrix_new = calculate_new_k_field(h_matrix, k_matrix, obs_matrix, h_matrix_smooth)
+#
+#         # Calculate new h matrix
+#         h_matrix_new = laplace_smooth_iter(h_matrix, k_matrix_new)
+#
+#         # Calculate maximum error
+#         h_obs_mask = obs_matrix.copy()
+#         h_obs_mask[h_obs_mask != 0] = 1
+#         h_error = (h_matrix_new - obs_matrix) * h_obs_mask
+#         h_error_abs = np.absolute(h_error)
+#         print(h_error_abs.max())
+#         if h_error_abs.max() > previous_error:
+#             break
+#
+#         # Replace current k and h matrix
+#         k_matrix = k_matrix_new
+#         h_matrix = h_matrix_new
+#
+#         # Update error
+#         previous_error = h_error_abs.max()
+#
+#     return h_matrix, k_matrix
 
 
 # Load in matrices
