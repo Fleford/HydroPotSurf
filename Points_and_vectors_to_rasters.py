@@ -1,6 +1,9 @@
 import numpy as np
+import sys
 
 # The goal is to convert points or vectors into rasters with lines or polygons
+
+np.set_printoptions(threshold=sys.maxsize)
 
 
 def list_all_intersected_cells(coord_start, coord_end):
