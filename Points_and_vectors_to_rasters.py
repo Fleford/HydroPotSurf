@@ -77,6 +77,8 @@ def point_array_list_all_intersected_cells(point_array):
 
     return whole_list_of_cells
 
+# Write a function that shades the area outside the polygon
+
 
 array = np.zeros((11, 11))
 start_point = np.array([0, 0])
