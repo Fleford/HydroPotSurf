@@ -482,136 +482,138 @@ def input_matrix_to_parameter_matrices(input_matrix):
 
 
 # Load in matrices
-initial_input = np.loadtxt("InputFolder/initial_input.txt")
-k_field, k_field_const_obs, obs_field, obs_mask, k_field_const_adj = input_matrix_to_parameter_matrices(initial_input)
 
-winsound.Beep(2500, 100)
+if __name__ == "__main__":
+    initial_input = np.loadtxt("InputFolder/initial_input.txt")
+    k_field, k_field_const_obs, obs_field, obs_mask, k_field_const_adj = input_matrix_to_parameter_matrices(initial_input)
 
-# Calculate bnd heads and initial h field
-print("Calculating boundary heads")
-h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field)
+    winsound.Beep(2500, 100)
 
-# Calculate new k
-print()
-print("Calculating delta k matrix")
-result = sign_matrix_for_k_adjustment(h_field, obs_field, obs_mask)
-# print(result)
+    # Calculate bnd heads and initial h field
+    print("Calculating boundary heads")
+    h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field)
 
-print()
-print("Calculating k field...")
-start_time = time.time()
-# print(k_field_const_obs)
-k_field2_new = k_field.copy()
-h_field_old = h_field.copy()
-h_field_best = h_field.copy()
-error_old = np.inf
-error_best = np.inf
-scale_value = 0.1
-pos_count = 0
-pos_max = 1 / scale_value
-avg_diff = 0
-diff = 0
-sign_list = np.array([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
-for run in range(2**18):
-    k_field2_new, error = calculate_new_k_field_randwalk(h_field, k_field2_new, obs_field, k_field_const_adj,
-                                                         step_scale=scale_value)
-    h_field = laplace_smooth_iter(h_field, k_field2_new)
-    # print(np.max(np.absolute(h_field - h_field_old)))
-    print(error)
-    if error > error_old:
-        pos_count += 1
+    # Calculate new k
+    print()
+    print("Calculating delta k matrix")
+    result = sign_matrix_for_k_adjustment(h_field, obs_field, obs_mask)
+    # print(result)
 
-    if error < error_best:
-        error_best = error
-        k_field_best = k_field2_new
-        h_field_best = h_field
-
-    if pos_count >= pos_max:
-        pos_count = 0
-        scale_value = scale_value / 10
-        pos_max = pos_max * 10
-        print("Scale value changed to " + str(scale_value))
+    print()
+    print("Calculating k field...")
+    start_time = time.time()
+    # print(k_field_const_obs)
+    k_field2_new = k_field.copy()
+    h_field_old = h_field.copy()
+    h_field_best = h_field.copy()
+    error_old = np.inf
+    error_best = np.inf
+    scale_value = 0.1
+    pos_count = 0
+    pos_max = 1 / scale_value
+    avg_diff = 0
+    diff = 0
+    sign_list = np.array([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
+    for run in range(2**18):
+        k_field2_new, error = calculate_new_k_field_randwalk(h_field, k_field2_new, obs_field, k_field_const_adj,
+                                                             step_scale=scale_value)
+        h_field = laplace_smooth_iter(h_field, k_field2_new)
+        # print(np.max(np.absolute(h_field - h_field_old)))
         print(error)
+        if error > error_old:
+            pos_count += 1
+
+        if error < error_best:
+            error_best = error
+            k_field_best = k_field2_new
+            h_field_best = h_field
+
+        if pos_count >= pos_max:
+            pos_count = 0
+            scale_value = scale_value / 10
+            pos_max = pos_max * 10
+            print("Scale value changed to " + str(scale_value))
+            print(error)
 
 
-    sign_list = np.append(sign_list, diff)
-    sign_list = sign_list[1:]
-    # print(np.sum(sign_list))
-    # print(sign_list)
+        sign_list = np.append(sign_list, diff)
+        sign_list = sign_list[1:]
+        # print(np.sum(sign_list))
+        # print(sign_list)
 
-    # if np.sum(sign_list) == 2:
-    #     scale_value = scale_value / 10
-    #     print("Scale value changed to " + str(scale_value))
-    #     sign_list = np.array([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
+        # if np.sum(sign_list) == 2:
+        #     scale_value = scale_value / 10
+        #     print("Scale value changed to " + str(scale_value))
+        #     sign_list = np.array([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
 
-    # if error > error_old:
-    #     scale_value = scale_value / 10
-    #     print("Scale value changed to " + str(scale_value))
-    error_old = error
+        # if error > error_old:
+        #     scale_value = scale_value / 10
+        #     print("Scale value changed to " + str(scale_value))
+        error_old = error
 
-    h_field_old = h_field
-    # if error < 0.000001:
-    #     break
-    if scale_value < 0.001:
-        break
-end_time = time.time()
-winsound.Beep(2500, 2500)
+        h_field_old = h_field
+        # if error < 0.000001:
+        #     break
+        if scale_value < 0.001:
+            break
+    end_time = time.time()
+    winsound.Beep(2500, 2500)
 
-h_field = h_field_best
-k_field = k_field2_new
+    h_field = h_field_best
+    k_field = k_field2_new
 
-print()
-print("Best error: " + str(error_best))
+    print()
+    print("Best error: " + str(error_best))
 
-print()
-print("Seconds elapsed: " + str(end_time - start_time))
+    print()
+    print("Seconds elapsed: " + str(end_time - start_time))
 
-# # run gw_model with old and new k_field
-# h_with_old_k = laplace_smooth_iter(h_field, k_field)
-# h_with_new_k = laplace_smooth_iter(h_field, k_field2_new)
-# # plt.matshow(h_with_new_k - h_with_old_k)
-plt.matshow(k_field2_new)
-# new_h_field = h_with_new_k
-plt.show()
+    # # run gw_model with old and new k_field
+    # h_with_old_k = laplace_smooth_iter(h_field, k_field)
+    # h_with_new_k = laplace_smooth_iter(h_field, k_field2_new)
+    # # plt.matshow(h_with_new_k - h_with_old_k)
+    plt.matshow(k_field2_new)
+    # new_h_field = h_with_new_k
+    plt.show()
 
-# # Iteratively adjust k
-# new_h_field, new_k_field = iteratively_adjust_k(h_field, k_field, obs_field)
-# # print("hup!")
-# # print(new_h_field)
-# # print(new_k_field)
+    # # Iteratively adjust k
+    # new_h_field, new_k_field = iteratively_adjust_k(h_field, k_field, obs_field)
+    # # print("hup!")
+    # # print(new_h_field)
+    # # print(new_k_field)
 
-new_h_field = h_field
+    new_h_field = h_field
 
-# Calculate error field
-error_field = obs_mask * (new_h_field - obs_field)
-# error_field = laplace_smooth_iter(error_field, k_field_const_obs)
-# error_field = error_field / (new_h_field.max() - new_h_field.min())
-plt.matshow(error_field)
-plt.show()
+    # Calculate error field
+    error_field = obs_mask * (new_h_field - obs_field)
+    # error_field = laplace_smooth_iter(error_field, k_field_const_obs)
+    # error_field = error_field / (new_h_field.max() - new_h_field.min())
+    plt.matshow(error_field)
+    plt.show()
 
-# Display current results
-levels = np.arange(np.amin(h_field), np.amax(h_field), 0.2)
-# plt.matshow(h_field)
-# plt.matshow(new_h_field)
-# plt.matshow(new_h_field - obs_field)
+    # Display current results
+    levels = np.arange(np.amin(h_field), np.amax(h_field), 0.2)
+    # plt.matshow(h_field)
+    # plt.matshow(new_h_field)
+    # plt.matshow(new_h_field - obs_field)
 
-# Plot 3d Surface
-fig = plt.figure()
-ax = Axes3D(fig, azim=-128.0, elev=43.0)
+    # Plot 3d Surface
+    fig = plt.figure()
+    ax = Axes3D(fig, azim=-128.0, elev=43.0)
 
-new_h_field[new_h_field == 0] = np.nan
-Z = new_h_field
-X, Y = np.meshgrid(np.arange(Z.shape[1]), np.arange(Z.shape[0]))
-ax.plot_surface(X, Y, Z)
-plt.show()
+    new_h_field[new_h_field == 0] = np.nan
+    Z = new_h_field
+    X, Y = np.meshgrid(np.arange(Z.shape[1]), np.arange(Z.shape[0]))
+    ax.plot_surface(X, Y, Z)
+    plt.show()
 
-# h_field[h_field == 0] = np.nan
-plt.matshow(k_field)
-plt.contour(h_field, levels=levels)
+    # h_field[h_field == 0] = np.nan
+    plt.matshow(k_field)
+    plt.contour(h_field, levels=levels)
 
-# plt.matshow(new_k_field)
-# # empty = np.zeros_like(new_h_field)
-# # plt.matshow(empty, cmap="gray")
-# # new_h_field[new_h_field == 0] = np.nan
-# plt.contour(new_h_field, levels=levels)
-plt.show()
+    # plt.matshow(new_k_field)
+    # # empty = np.zeros_like(new_h_field)
+    # # plt.matshow(empty, cmap="gray")
+    # # new_h_field[new_h_field == 0] = np.nan
+    # plt.contour(new_h_field, levels=levels)
+    plt.show()

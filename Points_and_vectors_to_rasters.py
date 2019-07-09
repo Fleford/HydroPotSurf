@@ -80,25 +80,26 @@ def point_array_list_all_intersected_cells(point_array):
 # Write a function that shades the area outside the polygon
 
 
-array = np.zeros((11, 11))
-start_point = np.array([0, 0])
-intermediate_point = np.array([5, 9])
-intermediate_point2 = np.array([9, 5])
-end_point = np.array([7, 4])
-all_points = np.array([start_point, intermediate_point, intermediate_point2, start_point])
-print(all_points)
+if __name__ == "__main__":
+    array = np.zeros((11, 11))
+    start_point = np.array([0, 0])
+    intermediate_point = np.array([5, 9])
+    intermediate_point2 = np.array([9, 5])
+    end_point = np.array([7, 4])
+    all_points = np.array([start_point, intermediate_point, intermediate_point2, start_point])
+    print(all_points)
 
-alist = point_array_list_all_intersected_cells(all_points)
+    alist = point_array_list_all_intersected_cells(all_points)
 
-# array[tuple(start_point)] = 1
-# array[tuple(end_point)] = 2
+    # array[tuple(start_point)] = 1
+    # array[tuple(end_point)] = 2
 
-list = list_all_intersected_cells(start_point, end_point)
+    list = list_all_intersected_cells(start_point, end_point)
 
-# Add points to matrix
-for coord in alist:
-    array[coord] = 3
+    # Add points to matrix
+    for coord in alist:
+        array[coord] = 3
 
-print(alist)
-print(array)
+    print(alist)
+    print(array)
 
