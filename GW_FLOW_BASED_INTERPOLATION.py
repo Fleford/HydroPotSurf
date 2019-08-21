@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import winsound
 import time
+from numba import njit, prange
 
 # The goal is to write program that can generate a gw surface,
 # given boundary geometry, boundary condition and data points
@@ -23,26 +24,58 @@ def shift_matrix(matrix, direction):
         return "NO DIRECTION SPECIFIED: up, down, left, right"
 
 
+# def shift_matrix_sum(matrix):
+#     # Each 2d element becomes the sum of all its adjacent elements
+#     # Empty cells are padded with zero
+#     return shift_matrix(matrix, "up") + shift_matrix(matrix, "down")\
+#                + shift_matrix(matrix, "left") + shift_matrix(matrix, "right")
+
+@njit()
 def shift_matrix_sum(matrix):
-    # Each 2d element becomes the sum of all its adjacent elements
-    # Empty cells are padded with zero
-    return shift_matrix(matrix, "up") + shift_matrix(matrix, "down")\
-               + shift_matrix(matrix, "left") + shift_matrix(matrix, "right")
+    h = matrix.shape[0]
+    w = matrix.shape[1]
+    result_matrix = np.zeros_like(matrix)
+
+    # Pad the matrix with zeros
+    matrix_padded = np.zeros((h + 2, w + 2))
+    for row in prange(h):
+        for col in prange(w):
+            matrix_padded[row + 1, col + 1] = matrix[row, col]
+
+    # Fill result matrix
+    for row in prange(h):
+        for col in prange(w):
+            result_matrix[row, col] = matrix_padded[1 + row + 1, 1 + col] + \
+                                      matrix_padded[1 + row - 1, 1 + col] + \
+                                      matrix_padded[1 + row, 1 + col + 1] + \
+                                      matrix_padded[1 + row, 1 + col - 1]
+
+    return result_matrix
 
 
+@njit()
 def laplace_smooth(h_matrix, k_matrix):
     # Performs one iteration of the Laplace smoothing operation
     k_matrix = np.absolute(k_matrix)
     hk_matrix = h_matrix * k_matrix
-    # When dividing by zero, a zero is returned
-    new_hk_matrix = np.divide(shift_matrix_sum(hk_matrix), shift_matrix_sum(k_matrix),
-                              out=np.zeros_like(shift_matrix_sum(hk_matrix)), where=shift_matrix_sum(k_matrix) != 0)
-    # # Zero out regions with zero hk
-    new_hk_matrix = np.divide((new_hk_matrix * k_matrix), k_matrix,
-                              out=np.zeros_like(new_hk_matrix * hk_matrix), where=k_matrix != 0)
+    # # When dividing by zero, a zero is returned
+    # new_hk_matrix = np.divide(shift_matrix_sum(hk_matrix), shift_matrix_sum(k_matrix),
+    #                           out=np.zeros_like(shift_matrix_sum(hk_matrix)), where=shift_matrix_sum(k_matrix) != 0)
+    hk_matrix_sum = shift_matrix_sum(hk_matrix)
+    k_matrix_sum = shift_matrix_sum(k_matrix)
+    for row in prange(k_matrix_sum.shape[0]):
+        for col in prange(k_matrix_sum.shape[1]):
+            if k_matrix_sum[row, col] == 0:
+                k_matrix_sum[row, col] = 1
+    new_hk_matrix = hk_matrix_sum / k_matrix_sum
+
+    # # # Zero out regions with zero hk
+    # new_hk_matrix = np.divide((new_hk_matrix * k_matrix), k_matrix,
+    #                           out=np.zeros_like(new_hk_matrix * hk_matrix), where=k_matrix != 0)
     return new_hk_matrix
 
 
+# @njit()
 def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.001):
     # Performs a number of iterations of Laplace smoothing
     # h_matrix = np.ones_like(h_matrix) * h_field.max()
@@ -484,10 +517,11 @@ def input_matrix_to_parameter_matrices(input_matrix):
 # Load in matrices
 
 if __name__ == "__main__":
-    initial_input = np.loadtxt("InputFolder/initial_input.txt")
+    # initial_input = np.loadtxt("InputFolder/initial_input.txt")
+    initial_input = np.loadtxt("InputFolder/output_array_1000.out")
+    start_time = time.time()
     k_field, k_field_const_obs, obs_field, obs_mask, k_field_const_adj = input_matrix_to_parameter_matrices(initial_input)
 
-    winsound.Beep(2500, 100)
 
     # Calculate bnd heads and initial h field
     print("Calculating boundary heads")
@@ -501,7 +535,6 @@ if __name__ == "__main__":
 
     print()
     print("Calculating k field...")
-    start_time = time.time()
     # print(k_field_const_obs)
     k_field2_new = k_field.copy()
     h_field_old = h_field.copy()
@@ -557,7 +590,6 @@ if __name__ == "__main__":
         if scale_value < 0.001:
             break
     end_time = time.time()
-    winsound.Beep(2500, 2500)
 
     h_field = h_field_best
     k_field = k_field2_new
