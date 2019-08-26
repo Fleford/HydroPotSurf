@@ -63,11 +63,12 @@ def laplace_smooth(h_matrix, k_matrix):
     #                           out=np.zeros_like(shift_matrix_sum(hk_matrix)), where=shift_matrix_sum(k_matrix) != 0)
     hk_matrix_sum = shift_matrix_sum(hk_matrix)
     k_matrix_sum = shift_matrix_sum(k_matrix)
+    new_hk_matrix = np.zeros_like(k_matrix_sum)
     for row in prange(k_matrix_sum.shape[0]):
         for col in prange(k_matrix_sum.shape[1]):
-            if k_matrix_sum[row, col] == 0:
-                k_matrix_sum[row, col] = 1
-    new_hk_matrix = hk_matrix_sum / k_matrix_sum
+            if not k_matrix_sum[row, col] == 0:
+                new_hk_matrix[row, col] = hk_matrix_sum[row, col] / k_matrix_sum[row, col]
+    # new_hk_matrix = hk_matrix_sum / k_matrix_sum
 
     # # # Zero out regions with zero hk
     # new_hk_matrix = np.divide((new_hk_matrix * k_matrix), k_matrix,
@@ -75,14 +76,27 @@ def laplace_smooth(h_matrix, k_matrix):
     return new_hk_matrix
 
 
-# @njit()
+# w/o njit: 32secs
+@njit()
 def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.001):
     # Performs a number of iterations of Laplace smoothing
     # h_matrix = np.ones_like(h_matrix) * h_field.max()
 
     # Make mask and copy of initial h_matrix for constant heads (where k is negative)
-    one_at_neg_k = np.ma.masked_less(k_matrix, 0).mask * 1
-    zero_at_neg_k = np.ma.masked_greater_equal(k_matrix, 0).mask * 1
+    # one_at_neg_k = np.ma.masked_less(k_matrix, 0).mask * 1
+    one_at_neg_k = np.zeros_like(k_matrix)
+    for row in prange(k_matrix.shape[0]):
+        for col in prange(k_matrix.shape[1]):
+            if k_matrix[row, col] < 0:
+                one_at_neg_k[row, col] = 1
+
+    # zero_at_neg_k = np.ma.masked_greater_equal(k_matrix, 0).mask * 1
+    zero_at_neg_k = np.ones_like(k_matrix)
+    for row in prange(k_matrix.shape[0]):
+        for col in prange(k_matrix.shape[1]):
+            if k_matrix[row, col] < 0:
+                zero_at_neg_k[row, col] = 0
+
     initial_h_matrix = h_matrix.copy()
 
     # Sanitize k_matrix from negatives
@@ -94,8 +108,15 @@ def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.001):
         # Apply constant heads (where k is negative)
         new_h_matrix = zero_at_neg_k * new_h_matrix + one_at_neg_k * initial_h_matrix
         # Zero out const heads on zero k
-        new_h_matrix = np.divide((new_h_matrix * k_matrix_abs), k_matrix_abs,
-                                 out=np.zeros_like(new_h_matrix * k_matrix_abs), where=k_matrix_abs != 0)
+        # new_h_matrix = np.divide((new_h_matrix * k_matrix_abs), k_matrix_abs,
+        #                          out=np.zeros_like(new_h_matrix * k_matrix_abs), where=k_matrix_abs != 0)
+        new_h_matrix_times_k_matrix_abs = new_h_matrix * k_matrix_abs
+        for row in prange(k_matrix_abs.shape[0]):
+            for col in prange(k_matrix_abs.shape[1]):
+                if not k_matrix_abs[row, col] == 0:
+                    new_h_matrix[row, col] = new_h_matrix_times_k_matrix_abs[row, col] / k_matrix_abs[row, col]
+        # new_h_matrix = new_h_matrix_times_k_matrix_abs / k_matrix_abs
+
         # Calculate change
         max_diff = np.max(new_h_matrix - h_matrix)
 
@@ -519,9 +540,9 @@ def input_matrix_to_parameter_matrices(input_matrix):
 if __name__ == "__main__":
     # initial_input = np.loadtxt("InputFolder/initial_input.txt")
     initial_input = np.loadtxt("InputFolder/output_array_1000.out")
+    print(initial_input.shape)
     start_time = time.time()
     k_field, k_field_const_obs, obs_field, obs_mask, k_field_const_adj = input_matrix_to_parameter_matrices(initial_input)
-
 
     # Calculate bnd heads and initial h field
     print("Calculating boundary heads")
