@@ -78,7 +78,7 @@ def laplace_smooth(h_matrix, k_matrix):
 
 # w/o njit: 32secs
 @njit()
-def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.001):
+def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.0001):
     # Performs a number of iterations of Laplace smoothing
     # h_matrix = np.ones_like(h_matrix) * h_field.max()
 
@@ -166,7 +166,7 @@ def adjust_h_field_to_fit_obs(h_matrix, obs_matrix, obs_mask, k_mask):
     return h_field_adjusted
 
 
-def calculate_boundary_values(obs_matrix, k_cnst_obs, k_cnst_bnd, convergence_threshold=0.01):
+def calculate_boundary_values(obs_matrix, k_cnst_obs, k_cnst_bnd, convergence_threshold=0.1):
     # Estimates the head values at the constant-head boundary
     # obs_matrix = Contains observation heads (zero at all other points)
     # k_cnst_obs = K field with -1 at constant-head boundary
@@ -539,7 +539,7 @@ def input_matrix_to_parameter_matrices(input_matrix):
 
 if __name__ == "__main__":
     # initial_input = np.loadtxt("InputFolder/initial_input.txt")
-    initial_input = np.loadtxt("InputFolder/output_array_1000.out")
+    initial_input = np.loadtxt("InputFolder/output_array_100.out")
     print(initial_input.shape)
     start_time = time.time()
     k_field, k_field_const_obs, obs_field, obs_mask, k_field_const_adj = input_matrix_to_parameter_matrices(initial_input)
