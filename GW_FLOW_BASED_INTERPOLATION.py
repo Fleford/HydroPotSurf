@@ -68,6 +68,8 @@ def laplace_smooth(h_matrix, k_matrix):
         for col in prange(k_matrix_sum.shape[1]):
             if not k_matrix_sum[row, col] == 0:
                 new_hk_matrix[row, col] = hk_matrix_sum[row, col] / k_matrix_sum[row, col]
+            else:
+                new_hk_matrix[row, col] = 0
     # new_hk_matrix = hk_matrix_sum / k_matrix_sum
 
     # # # Zero out regions with zero hk
@@ -115,6 +117,8 @@ def laplace_smooth_iter(h_matrix, k_matrix, convergence_threshold=0.0001):
             for col in prange(k_matrix_abs.shape[1]):
                 if not k_matrix_abs[row, col] == 0:
                     new_h_matrix[row, col] = new_h_matrix_times_k_matrix_abs[row, col] / k_matrix_abs[row, col]
+                else:
+                    new_h_matrix[row, col] = 0
         # new_h_matrix = new_h_matrix_times_k_matrix_abs / k_matrix_abs
 
         # Calculate change
@@ -539,7 +543,7 @@ def input_matrix_to_parameter_matrices(input_matrix):
 
 if __name__ == "__main__":
     # initial_input = np.loadtxt("InputFolder/initial_input.txt")
-    initial_input = np.loadtxt("InputFolder/output_array_100.out")
+    initial_input = np.loadtxt("InputFolder/output_array_1000.out")
     print(initial_input.shape)
     start_time = time.time()
     k_field, k_field_const_obs, obs_field, obs_mask, k_field_const_adj = input_matrix_to_parameter_matrices(initial_input)

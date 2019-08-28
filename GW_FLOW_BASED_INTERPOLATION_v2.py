@@ -345,10 +345,18 @@ def calculate_new_k_field_cosine_plane(h_matrix, k_matrix, obs_matrix):
 
     # Calculate total head error
     total_head_error = 0
+    error_array = []
     for obs_cood in obs_indexes:
-        total_head_error += abs(h_matrix[obs_cood[0], obs_cood[1]] - obs_matrix[obs_cood[0], obs_cood[1]])
+        # Calculate head error
+        head_error = h_matrix[obs_cood[0], obs_cood[1]] - obs_matrix[obs_cood[0], obs_cood[1]]
+        # Update total error
+        total_head_error += abs(head_error)
+        # Calculate error array
+        error_array.append(head_error)
     print("total_head_error")
     print(total_head_error)
+    print("error_array")
+    print(error_array)
 
     # Prepare mask for observations
     obs_mask = obs_matrix.copy()
