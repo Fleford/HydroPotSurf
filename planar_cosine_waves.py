@@ -32,7 +32,7 @@ if __name__ == "__main__":
     matrix = np.zeros((300, 300))
     print(matrix)
 
-    adjustment_array = generate_cosine_array(matrix, 2, 4)
+    adjustment_array = generate_cosine_array(matrix, 1, 0)
     print(adjustment_array)
 
     plt.matshow(adjustment_array)
