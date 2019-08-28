@@ -403,7 +403,7 @@ def calculate_new_k_field_cosine_plane(h_matrix, k_matrix, obs_matrix, scale_fac
     # print("new_error_array")
     # print(new_error_array)
 
-    print(scale_factor, new_error_array, new_total_head_error)
+    print(scale_factor, "\t", new_error_array, "\t", new_total_head_error)
 
     return None #k_matrix_new
 
