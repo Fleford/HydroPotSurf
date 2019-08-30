@@ -5,7 +5,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import winsound
 import time
 from numba import njit, prange
-from planar_cosine_waves import generate_cosine_array
+from planar_cosine_waves import generate_cosine_array, diagonal_counter
 
 # Version 2 incorporates uses DFT arrays to adjust the k_matrix
 
@@ -308,71 +308,88 @@ def calculate_new_k_field_cosine_plane(h_matrix, k_matrix, obs_matrix):
     # Obs_matrix = zero at all values other than observation values
 
     # Initialize flags and counters
-    the_cosine_array_does_not_help = True
-    m = 1
-    n = 0
+    k_matrix_new = k_matrix.copy()
+    plane_cnt = 0
+    change_plane_flag = True
 
-    # Generate cosine array
-    cosine_array = generate_cosine_array(k_matrix, 1, 5)
+    # Start of loop
+    while change_plane_flag:
+        # Increment counter
+        plane_cnt += 1
 
-    # Prepare list of scale_factors
-    test_scale_factors = [-1, -0.001, 0, 0.001, 1]
-    resulting_total_head_error = []
-    for scale_factor in test_scale_factors:
-        total_head_error = calculate_total_head_error(cosine_array, scale_factor, h_matrix, k_matrix, obs_matrix)
-        resulting_total_head_error.append(total_head_error)
-    print(test_scale_factors)
-    print(resulting_total_head_error)
-    min_index = int(np.argmin(np.asarray(resulting_total_head_error)))
+        # Generate cosine array
+        m, n = diagonal_counter(plane_cnt)
+        cosine_array = generate_cosine_array(k_matrix, m, n)
 
-    # Initialize scale_factor_final variable
-    scale_factor_final = test_scale_factors[min_index]
+        # Prepare list of scale_factors
+        test_scale_factors = [-1, -0.001, 0, 0.001, 1]
+        resulting_total_head_error = []
+        for scale_factor in test_scale_factors:
+            total_head_error = calculate_total_head_error(cosine_array, scale_factor, h_matrix, k_matrix, obs_matrix)
+            resulting_total_head_error.append(total_head_error)
+        print(test_scale_factors)
+        print(resulting_total_head_error)
+        min_index = int(np.argmin(np.asarray(resulting_total_head_error)))
 
-    # Check if optimal scale factor is within search range
-    if min_index == 1 or min_index == 3:
-        # Initialize variables
-        sf_in = test_scale_factors[2]
-        error_in = resulting_total_head_error[2]
-        sf_out = test_scale_factors[int(2 * (min_index - 2) + 2)]
-        error_out = resulting_total_head_error[int(2 * (min_index - 2) + 2)]
+        # Initialize scale_factor_final variable
+        scale_factor_final = test_scale_factors[min_index]
 
-        while True:
-            # Evaluate new scale_factor
-            sf_middle = (sf_in + sf_out) / 2
-            error_middle = calculate_total_head_error(cosine_array, sf_middle, h_matrix, k_matrix, obs_matrix)
-            sf_list = [sf_in, sf_middle, sf_out]
-            error_list = [error_in, error_middle, error_out]
-            print(sf_list)
-            print(error_list)
+        # Check if optimal scale factor is within search range
+        if min_index == 1 or min_index == 3:
+            # Initialize variables
+            sf_in = test_scale_factors[2]
+            error_in = resulting_total_head_error[2]
+            sf_out = test_scale_factors[int(2 * (min_index - 2) + 2)]
+            error_out = resulting_total_head_error[int(2 * (min_index - 2) + 2)]
 
-            # Pick out new bounding sf values and updating corresponding errors
-            index_min = int(np.argmin(np.asarray(error_list)))
-            index_max = int(np.argmax(np.asarray(error_list)))
-            index_mid = 3 - (index_min + index_max)
+            while True:
+                # Evaluate new scale_factor
+                sf_middle = (sf_in + sf_out) / 2
+                error_middle = calculate_total_head_error(cosine_array, sf_middle, h_matrix, k_matrix, obs_matrix)
+                sf_list = [sf_in, sf_middle, sf_out]
+                error_list = [error_in, error_middle, error_out]
+                print(sf_list)
+                print(error_list)
 
-            # Update final scale_factor
-            scale_factor_final = sf_list[index_min]
+                # Pick out new bounding sf values and updating corresponding errors
+                index_min = int(np.argmin(np.asarray(error_list)))
+                index_max = int(np.argmax(np.asarray(error_list)))
+                index_mid = 3 - (index_min + index_max)
 
-            # Check if we're done zooming in
-            if abs(sf_in - sf_out) < 0.01:
-                print("Stopped due to zoom window too small")
-                break
-            if index_max == 1:
-                print("Stopped due to no change in bounds of window")
-                break
+                # Update final scale_factor
+                scale_factor_final = sf_list[index_min]
 
-            # Otherwise, continue modifying lists
-            sf_in = sf_list[index_min]
-            error_in = error_list[index_min]
-            sf_out = sf_list[index_mid]
-            error_out = error_list[index_mid]
-    elif min_index == 2:
-        print("No change recommended")
-    else:
-        print("Unexpected min_index value: " + str(min_index))
-    print("scale_factor_final")
-    print(scale_factor_final)
-    return None #k_matrix_new
+                # Check if we're done zooming in
+                if abs(sf_in - sf_out) < 0.01:
+                    print("Stopped due to zoom window too small")
+                    break
+                if index_max == 1:
+                    print("Stopped due to no change in bounds of window")
+                    break
+
+                # Otherwise, continue modifying lists
+                sf_in = sf_list[index_min]
+                error_in = error_list[index_min]
+                sf_out = sf_list[index_mid]
+                error_out = error_list[index_mid]
+
+        elif min_index == 0 or min_index == 4:
+            scale_factor_final = test_scale_factors[min_index]
+            print("Stopped due to minimum found at edge of search window")
+
+        if scale_factor_final == 0:
+            print("No change recommended. Trying next plane...")
+            change_plane_flag = True
+        else:
+            # Apply final scale factor to k field
+            k_matrix_new = k_matrix * (2 ** (cosine_array * scale_factor_final))
+            print("scale_factor_final")
+            print(scale_factor_final)
+
+            # End loop
+            change_plane_flag = False
+
+    return k_matrix_new
 
 
 def sign_matrix_for_k_adjustment(h_matrix, obs_matrix, obs_mask):
@@ -497,7 +514,7 @@ def input_matrix_to_parameter_matrices(input_matrix):
 
 if __name__ == "__main__":
     # initial_input = np.loadtxt("InputFolder/initial_input.txt")
-    initial_input = np.loadtxt("InputFolder/output_array_10000.out")
+    initial_input = np.loadtxt("InputFolder/output_array_1000.out")
     print(initial_input.shape)
     start_time = time.time()
     k_field, k_field_const_obs, obs_field, obs_mask, k_field_const_adj = input_matrix_to_parameter_matrices(initial_input)
@@ -569,7 +586,13 @@ if __name__ == "__main__":
     #     if scale_value < 0.001:
     #         break
 
-    k_field2_new = calculate_new_k_field_cosine_plane(h_field, k_field, obs_field)
+    cnt = 0
+    while True:
+        cnt += 1
+        k_field = calculate_new_k_field_cosine_plane(h_field, k_field, obs_field)
+        if cnt % 10 == 0:
+            plt.matshow(k_field)
+            plt.show()
 
     end_time = time.time()
 

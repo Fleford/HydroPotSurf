@@ -87,5 +87,5 @@ if __name__ == "__main__":
     #
     # plt.matshow(adjustment_array)
     # plt.show()
-    for x in range(15):
+    for x in range(30):
         diagonal_counter(x)
