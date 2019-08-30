@@ -322,7 +322,7 @@ def calculate_new_k_field_cosine_plane(h_matrix, k_matrix, obs_matrix):
         cosine_array = generate_cosine_array(k_matrix, m, n)
 
         # Prepare list of scale_factors
-        test_scale_factors = [-10, -0.001, 0, 0.001, 10]
+        test_scale_factors = [-1, -0.01, 0, 0.01, 1]
         resulting_total_head_error = []
         for scale_factor in test_scale_factors:
             total_head_error = calculate_total_head_error(cosine_array, scale_factor, h_matrix, k_matrix, obs_matrix)
