@@ -28,12 +28,64 @@ def generate_cosine_array(array_like, m_row_half_wavelengths, n_col_half_wavelen
     return basis_array
 
 
+def diagonal_counter(end_cnt):
+    m = 0   # Row
+    n = 0   # Column
+    cnt = 0
+
+    if cnt == end_cnt:
+        print(m, n)
+        return m, n
+
+    m = 0   # Row
+    n = 1   # Column
+
+    cnt += 1
+    if cnt == end_cnt:
+        print(m, n)
+        return m, n
+
+    while True:
+        # Slosh
+        m_done = n
+        n_done = m
+        if n < m:
+            reverse = True
+        else:
+            reverse = False
+        while m_done != m and n_done != n:
+            if reverse:
+                m -= 1
+                n += 1
+            else:
+                m += 1
+                n -= 1
+
+            cnt += 1
+            if cnt == end_cnt:
+                print(m, n)
+                return m, n
+
+        # Increment
+        if m != 0:
+            m += 1
+        if n != 0:
+            n += 1
+
+        cnt += 1
+        if cnt == end_cnt:
+            print(m, n)
+            return m, n
+
+
 if __name__ == "__main__":
-    matrix = np.zeros((300, 300))
-    print(matrix)
-
-    adjustment_array = generate_cosine_array(matrix, 1, 0)
-    print(adjustment_array)
-
-    plt.matshow(adjustment_array)
-    plt.show()
+    # matrix = np.zeros((300, 300))
+    # print(matrix)
+    #
+    # adjustment_array = generate_cosine_array(matrix, 2, 3)
+    # print(adjustment_array)
+    #
+    # plt.matshow(adjustment_array)
+    # plt.show()
+    for x in range(15):
+        diagonal_counter(x)
