@@ -299,34 +299,28 @@ def calculate_new_k_field_cosine_plane(h_matrix, k_matrix, obs_matrix):
         # Increment counter
         plane_cnt += 1
 
-        # Generate cosine and sine array
+        # Generate cosine array
         m, n = diagonal_counter(plane_cnt)
         cosine_array = generate_cosine_array(k_matrix, m, n)
-        sine_array = generate_sine_array(k_matrix, m, n)
+
+        base_total_head_error = calculate_total_head_error(cosine_array, 0, h_matrix, k_matrix, obs_matrix)
 
         # Apply cosine plane to perturbation array
         test_scale_factors = [-0.01, 0, 0.01]
         resulting_total_head_error = []
         for scale_factor in test_scale_factors:
-            total_head_error = calculate_total_head_error(cosine_array, scale_factor, h_matrix, k_matrix, obs_matrix)
-            resulting_total_head_error.append(total_head_error)
+            if scale_factor == 0:
+                resulting_total_head_error.append(base_total_head_error)
+                continue
+            else:
+                total_head_error = calculate_total_head_error(cosine_array, scale_factor, h_matrix,
+                                                              k_matrix, obs_matrix)
+                resulting_total_head_error.append(total_head_error)
         print(test_scale_factors)
         print(resulting_total_head_error)
         min_index = int(np.argmin(np.asarray(resulting_total_head_error)))
         print(min_index)
         perturbation_array = perturbation_array * (2 ** (cosine_array * test_scale_factors[min_index]))
-
-        # # Apply sine plane to perturbation array
-        # test_scale_factors = [-0.001, 0, 0.001]
-        # resulting_total_head_error = []
-        # for scale_factor in test_scale_factors:
-        #     total_head_error = calculate_total_head_error(sine_array, scale_factor, h_matrix, k_matrix, obs_matrix)
-        #     resulting_total_head_error.append(total_head_error)
-        # print(test_scale_factors)
-        # print(resulting_total_head_error)
-        # min_index = int(np.argmin(np.asarray(resulting_total_head_error)))
-        # print(min_index)
-        # perturbation_array = perturbation_array * (2 ** (cosine_array * test_scale_factors[min_index]))
 
         # Break when frequency limit is reached
         if m + n == 10:
