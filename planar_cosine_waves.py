@@ -59,7 +59,7 @@ def diagonal_counter(end_cnt):
     cnt = 0
 
     if cnt == end_cnt:
-        print(m, n)
+        # print(m, n)
         return m, n
 
     m = 0   # Row
@@ -67,7 +67,7 @@ def diagonal_counter(end_cnt):
 
     cnt += 1
     if cnt == end_cnt:
-        print(m, n)
+        # print(m, n)
         return m, n
 
     while True:
@@ -88,7 +88,7 @@ def diagonal_counter(end_cnt):
 
             cnt += 1
             if cnt == end_cnt:
-                print(m, n)
+                # print(m, n)
                 return m, n
 
         # Increment
@@ -99,7 +99,7 @@ def diagonal_counter(end_cnt):
 
         cnt += 1
         if cnt == end_cnt:
-            print(m, n)
+            # print(m, n)
             return m, n
 
 

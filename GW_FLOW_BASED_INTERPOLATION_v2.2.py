@@ -292,7 +292,9 @@ def calculate_new_k_field_cosine_plane(h_matrix, k_matrix, obs_matrix):
     k_matrix_new = k_matrix.copy()
     plane_cnt = 0
     perturbation_array = np.ones_like(k_matrix_new)
-    change_plane_flag = True
+    null_cosine_array = np.zeros_like(k_matrix_new)
+
+    base_total_head_error = calculate_total_head_error(null_cosine_array, 0, h_matrix, k_matrix, obs_matrix)
 
     # Start of loop
     while True:
@@ -303,25 +305,15 @@ def calculate_new_k_field_cosine_plane(h_matrix, k_matrix, obs_matrix):
         m, n = diagonal_counter(plane_cnt)
         cosine_array = generate_cosine_array(k_matrix, m, n)
 
-        base_total_head_error = calculate_total_head_error(cosine_array, 0, h_matrix, k_matrix, obs_matrix)
-
         # Apply cosine plane to perturbation array
-        test_scale_factors = [-0.01, 0, 0.01]
-        resulting_total_head_error = []
+        test_scale_factors = [-0.01, 0.01]
         for scale_factor in test_scale_factors:
-            if scale_factor == 0:
-                resulting_total_head_error.append(base_total_head_error)
-                continue
-            else:
-                total_head_error = calculate_total_head_error(cosine_array, scale_factor, h_matrix,
-                                                              k_matrix, obs_matrix)
-                resulting_total_head_error.append(total_head_error)
-        print(test_scale_factors)
-        print(resulting_total_head_error)
-        min_index = int(np.argmin(np.asarray(resulting_total_head_error)))
-        print(min_index)
-        perturbation_array = perturbation_array * (2 ** (cosine_array * test_scale_factors[min_index]))
-
+            total_head_error = calculate_total_head_error(cosine_array, scale_factor, h_matrix, k_matrix, obs_matrix)
+            if total_head_error < base_total_head_error:
+                perturbation_array = perturbation_array * (2 ** (cosine_array * scale_factor))
+                # print(scale_factor)
+                # print(total_head_error)
+                break
         # Break when frequency limit is reached
         if m + n == 10:
             break
@@ -387,7 +379,6 @@ if __name__ == "__main__":
     # Calculate bnd heads and initial h field
     print("Calculating boundary heads")
     h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field)
-
 
     print()
     print("Calculating k field...")
