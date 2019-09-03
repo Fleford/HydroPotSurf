@@ -5,30 +5,11 @@ from mpl_toolkits.mplot3d import Axes3D
 import winsound
 import time
 from numba import njit, prange
-from planar_cosine_waves import generate_cosine_array, diagonal_counter
+from planar_cosine_waves import generate_cosine_array, generate_sine_array, diagonal_counter
+np.set_printoptions(linewidth=300)
 
-# Version 2 incorporates uses DFT arrays to adjust the k_matrix
+# Version 2.2 changes how perturbation arrays are applied
 
-
-def shift_matrix(matrix, direction):
-    # Shifts a 2d matrix in a direction and pads with zeros
-    if direction == "up":
-        return np.delete(np.pad(matrix, ((0, 1), (0, 0)), 'constant'), 0, 0)
-    elif direction == "down":
-        return np.delete(np.pad(matrix, ((1, 0), (0, 0)), 'constant'), -1, 0)
-    elif direction == "left":
-        return np.delete(np.pad(matrix, ((0, 0), (0, 1)), 'constant'), 0, 1)
-    elif direction == "right":
-        return np.delete(np.pad(matrix, ((0, 0), (1, 0)), 'constant'), -1, 1)
-    else:
-        return "NO DIRECTION SPECIFIED: up, down, left, right"
-
-
-# def shift_matrix_sum(matrix):
-#     # Each 2d element becomes the sum of all its adjacent elements
-#     # Empty cells are padded with zero
-#     return shift_matrix(matrix, "up") + shift_matrix(matrix, "down")\
-#                + shift_matrix(matrix, "left") + shift_matrix(matrix, "right")
 
 @njit()
 def shift_matrix_sum(matrix):
@@ -275,14 +256,14 @@ def split_into_sign_and_magnitude(matrix):
     return matrix_sign, matrix_magnitude
 
 
-def calculate_total_head_error(input_cosine_array, input_scale_factor, input_h_matrix, input_k_matrix,
+def calculate_total_head_error(input_wavy_array, input_scale_factor, input_h_matrix, input_k_matrix,
                                input_obs_matrix):
     # Note that the input_k_matrix is the k matrix before application of the cosine array
     # Build index list for all observed heads
     obs_indexes = np.argwhere(input_obs_matrix)
 
     # Generate perturbation array
-    perturbation_array = 2 ** (input_cosine_array * input_scale_factor)
+    perturbation_array = 2 ** (input_wavy_array * input_scale_factor)
 
     # Apply perturbation to k_field
     trial_k_matrix = input_k_matrix * perturbation_array
@@ -310,19 +291,21 @@ def calculate_new_k_field_cosine_plane(h_matrix, k_matrix, obs_matrix):
     # Initialize flags and counters
     k_matrix_new = k_matrix.copy()
     plane_cnt = 0
+    perturbation_array = np.ones_like(k_matrix_new)
     change_plane_flag = True
 
     # Start of loop
-    while change_plane_flag:
+    while True:
         # Increment counter
         plane_cnt += 1
 
-        # Generate cosine array
+        # Generate cosine and sine array
         m, n = diagonal_counter(plane_cnt)
         cosine_array = generate_cosine_array(k_matrix, m, n)
+        sine_array = generate_sine_array(k_matrix, m, n)
 
-        # Prepare list of scale_factors
-        test_scale_factors = [-0.1, -0.001, 0, 0.001, 0.1]
+        # Apply cosine plane to perturbation array
+        test_scale_factors = [-0.001, 0, 0.001]
         resulting_total_head_error = []
         for scale_factor in test_scale_factors:
             total_head_error = calculate_total_head_error(cosine_array, scale_factor, h_matrix, k_matrix, obs_matrix)
@@ -330,105 +313,29 @@ def calculate_new_k_field_cosine_plane(h_matrix, k_matrix, obs_matrix):
         print(test_scale_factors)
         print(resulting_total_head_error)
         min_index = int(np.argmin(np.asarray(resulting_total_head_error)))
+        print(min_index)
+        perturbation_array = perturbation_array * (2 ** (cosine_array * test_scale_factors[min_index]))
 
-        # Initialize scale_factor_final variable
-        scale_factor_final = test_scale_factors[min_index]
+        # # Apply sine plane to perturbation array
+        # test_scale_factors = [-0.001, 0, 0.001]
+        # resulting_total_head_error = []
+        # for scale_factor in test_scale_factors:
+        #     total_head_error = calculate_total_head_error(sine_array, scale_factor, h_matrix, k_matrix, obs_matrix)
+        #     resulting_total_head_error.append(total_head_error)
+        # print(test_scale_factors)
+        # print(resulting_total_head_error)
+        # min_index = int(np.argmin(np.asarray(resulting_total_head_error)))
+        # print(min_index)
+        # perturbation_array = perturbation_array * (2 ** (cosine_array * test_scale_factors[min_index]))
 
-        # Check if optimal scale factor is within search range
-        if min_index == 1 or min_index == 3:
-            # Initialize variables
-            sf_in = test_scale_factors[2]
-            error_in = resulting_total_head_error[2]
-            sf_out = test_scale_factors[int(2 * (min_index - 2) + 2)]
-            error_out = resulting_total_head_error[int(2 * (min_index - 2) + 2)]
+        # Break when frequency limit is reached
+        if m + n == 10:
+            break
 
-            while True:
-                # Evaluate new scale_factor
-                sf_middle = (sf_in + sf_out) / 2
-                error_middle = calculate_total_head_error(cosine_array, sf_middle, h_matrix, k_matrix, obs_matrix)
-                sf_list = [sf_in, sf_middle, sf_out]
-                error_list = [error_in, error_middle, error_out]
-                print(sf_list)
-                print(error_list)
-
-                # Pick out new bounding sf values and updating corresponding errors
-                index_min = int(np.argmin(np.asarray(error_list)))
-                index_max = int(np.argmax(np.asarray(error_list)))
-                index_mid = 3 - (index_min + index_max)
-
-                # Update final scale_factor
-                scale_factor_final = sf_list[index_min]
-
-                # Check if we're done zooming in
-                if abs(sf_in - sf_out) < 0.01:
-                    print("Stopped due to zoom window too small")
-                    break
-                if index_max == 1:
-                    print("Stopped due to no change in bounds of window")
-                    break
-
-                # Otherwise, continue modifying lists
-                sf_in = sf_list[index_min]
-                error_in = error_list[index_min]
-                sf_out = sf_list[index_mid]
-                error_out = error_list[index_mid]
-
-        elif min_index == 0 or min_index == 4:
-            scale_factor_final = test_scale_factors[min_index]
-            print("Stopped due to minimum found at edge of search window")
-
-        if scale_factor_final == 0:
-            print("No change recommended. Trying next plane...")
-            change_plane_flag = True
-        else:
-            # Apply final scale factor to k field
-            k_matrix_new = k_matrix * (2 ** (cosine_array * scale_factor_final))
-            print("scale_factor_final")
-            print(scale_factor_final)
-
-            # End loop
-            change_plane_flag = False
+    # Apply perturbation array to k_field
+    k_matrix_new = k_matrix * perturbation_array
 
     return k_matrix_new
-
-
-def sign_matrix_for_k_adjustment(h_matrix, obs_matrix, obs_mask):
-    # A function that return a matrix with -1, 0 or 1 depending on a how the k field should be adjusted
-
-    # Prep values
-    h_matrix_center = h_matrix.copy() * obs_mask
-    h_matrix_up = h_matrix.copy() * shift_matrix(obs_mask, "up")
-    h_matrix_down = h_matrix.copy() * shift_matrix(obs_mask, "down")
-    h_matrix_left = h_matrix.copy() * shift_matrix(obs_mask, "left")
-    h_matrix_right = h_matrix.copy() * shift_matrix(obs_mask, "right")
-
-    # Calculate h gradient signs
-    h_up_grad = h_matrix_up - shift_matrix(h_matrix_center, "up")
-    h_up_grad_sign = safe_divide(h_up_grad, np.absolute(h_up_grad))
-
-    h_down_grad = h_matrix_down - shift_matrix(h_matrix_center, "down")
-    h_down_grad_sign = safe_divide(h_down_grad, np.absolute(h_down_grad))
-
-    h_left_grad = h_matrix_left - shift_matrix(h_matrix_center, "left")
-    h_left_grad_sign = safe_divide(h_left_grad, np.absolute(h_left_grad))
-
-    h_right_grad = h_matrix_right - shift_matrix(h_matrix_center, "right")
-    h_right_grad_sign = safe_divide(h_right_grad, np.absolute(h_right_grad))
-
-    # Add up all gradient signs
-    h_obs_grad_sign = h_up_grad_sign + h_down_grad_sign + h_left_grad_sign + h_right_grad_sign
-
-    # Calculate h error signs
-    h_error = obs_matrix - h_matrix_center
-    h_error_sign = safe_divide(h_error, np.absolute(h_error))
-
-    # Spread h error to adjacent cells
-    h_error_sign_adj = shift_matrix_sum(h_error_sign)
-
-    # Combine h_gradient and h_error
-    k_delta_sign = h_obs_grad_sign * h_error_sign_adj
-
-    return k_delta_sign
 
 
 def input_matrix_to_parameter_matrices(input_matrix):
@@ -474,143 +381,41 @@ def input_matrix_to_parameter_matrices(input_matrix):
     return k_field_cnst_bnd, k_field_cnst_obs, obs_field, obs_mask, k_field_cnst_adj
 
 
-# def iteratively_adjust_k(h_matrix, k_matrix, obs_matrix):
-#     # Iteratively adjusts the k_field until convergence is reached
-#
-#     # Assume provided h_matrix is the smoothest
-#     # Copy the original h_matrix
-#     h_matrix_smooth = h_matrix.copy()
-#
-#     # Setup previous error variable
-#     previous_error = np.inf
-#
-#     for x in range(10000):
-#         # Calculate new k matrix
-#         k_matrix_new = calculate_new_k_field(h_matrix, k_matrix, obs_matrix, h_matrix_smooth)
-#
-#         # Calculate new h matrix
-#         h_matrix_new = laplace_smooth_iter(h_matrix, k_matrix_new)
-#
-#         # Calculate maximum error
-#         h_obs_mask = obs_matrix.copy()
-#         h_obs_mask[h_obs_mask != 0] = 1
-#         h_error = (h_matrix_new - obs_matrix) * h_obs_mask
-#         h_error_abs = np.absolute(h_error)
-#         print(h_error_abs.max())
-#         if h_error_abs.max() > previous_error:
-#             break
-#
-#         # Replace current k and h matrix
-#         k_matrix = k_matrix_new
-#         h_matrix = h_matrix_new
-#
-#         # Update error
-#         previous_error = h_error_abs.max()
-#
-#     return h_matrix, k_matrix
-
-
 # Load in matrices
 
 if __name__ == "__main__":
     # initial_input = np.loadtxt("InputFolder/initial_input.txt")
     initial_input = np.loadtxt("InputFolder/output_array_1000.out")
     print(initial_input.shape)
-    start_time = time.time()
+
     k_field, k_field_const_obs, obs_field, obs_mask, k_field_const_adj = input_matrix_to_parameter_matrices(initial_input)
 
     # Calculate bnd heads and initial h field
     print("Calculating boundary heads")
     h_field = calculate_boundary_values(obs_field, k_field_const_obs, k_field)
 
-    # # Calculate new k
-    # print()
-    # print("Calculating delta k matrix")
-    # result = sign_matrix_for_k_adjustment(h_field, obs_field, obs_mask)
-    # # print(result)
 
     print()
     print("Calculating k field...")
-    # # print(k_field_const_obs)
-    # k_field2_new = k_field.copy()
-    # h_field_old = h_field.copy()
-    # h_field_best = h_field.copy()
-    # error_old = np.inf
-    # error_best = np.inf
-    # scale_value = 0.1
-    # pos_count = 0
-    # pos_max = 1 / scale_value
-    # avg_diff = 0
-    # diff = 0
-    # sign_list = np.array([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
-    # for run in range(2**18):
-    #     k_field2_new, error = calculate_new_k_field_randwalk(h_field, k_field2_new, obs_field, k_field_const_adj,
-    #                                                          step_scale=scale_value)
-    #     h_field = laplace_smooth_iter(h_field, k_field2_new)
-    #     # print(np.max(np.absolute(h_field - h_field_old)))
-    #     print(error)
-    #     if error > error_old:
-    #         pos_count += 1
-    #
-    #     if error < error_best:
-    #         error_best = error
-    #         k_field_best = k_field2_new
-    #         h_field_best = h_field
-    #
-    #     if pos_count >= pos_max:
-    #         pos_count = 0
-    #         scale_value = scale_value / 10
-    #         pos_max = pos_max * 10
-    #         print("Scale value changed to " + str(scale_value))
-    #         print(error)
-    #
-    #
-    #     sign_list = np.append(sign_list, diff)
-    #     sign_list = sign_list[1:]
-    #     # print(np.sum(sign_list))
-    #     # print(sign_list)
-    #
-    #     # if np.sum(sign_list) == 2:
-    #     #     scale_value = scale_value / 10
-    #     #     print("Scale value changed to " + str(scale_value))
-    #     #     sign_list = np.array([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
-    #
-    #     # if error > error_old:
-    #     #     scale_value = scale_value / 10
-    #     #     print("Scale value changed to " + str(scale_value))
-    #     error_old = error
-    #
-    #     h_field_old = h_field
-    #     # if error < 0.000001:
-    #     #     break
-    #     if scale_value < 0.001:
-    #         break
-
-    # k_field = np.loadtxt("k_field1.txt")
-    # cnt = 0
-    for run in range(2**11):
-        # cnt += 1
+    start_time = time.time()
+    for run in range(256):
         k_field = calculate_new_k_field_cosine_plane(h_field, k_field, obs_field)
         h_field = laplace_smooth_iter(h_field, k_field)
-        # np.savetxt("k_field1.txt", k_field)
-        # if cnt % 10 == 0:
-        #     plt.matshow(k_field)
-        #     plt.savefig("pic.png")
+    end_time = time.time()
+    print()
+    print("Seconds elapsed: " + str(end_time - start_time))
     plt.matshow(k_field)
     plt.show()
     plt.matshow(h_field)
     plt.show()
 
-    end_time = time.time()
+
 
     # h_field = h_field_best
     # k_field = k_field2_new
 
     # print()
     # print("Best error: " + str(error_best))
-
-    print()
-    print("Seconds elapsed: " + str(end_time - start_time))
 
     # # run gw_model with old and new k_field
     # h_with_old_k = laplace_smooth_iter(h_field, k_field)

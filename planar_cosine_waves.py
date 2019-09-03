@@ -28,6 +28,31 @@ def generate_cosine_array(array_like, m_row_half_wavelengths, n_col_half_wavelen
     return basis_array
 
 
+def generate_sine_array(array_like, m_row_half_wavelengths, n_col_half_wavelengths):
+    # Number of half-wavelengths along the Row
+    # Number of half-wavelengths along the Column
+    m_max = array_like.shape[0]
+    n_max = array_like.shape[1]
+    basis_array = np.zeros_like(array_like)
+
+    for row in range(m_max):
+        for col in range(n_max):
+            # Calculate row component
+            if m_row_half_wavelengths == 0:
+                row_sine = 1
+            else:
+                row_sine = np.sin(np.pi / (m_max / m_row_half_wavelengths) * row)
+
+            # Calculate column component
+            if n_col_half_wavelengths == 0:
+                col_sine = 1
+            else:
+                col_sine = np.sin(np.pi / (n_max / n_col_half_wavelengths) * col)
+
+            basis_array[row, col] = row_sine * col_sine
+    return basis_array
+
+
 def diagonal_counter(end_cnt):
     m = 0   # Row
     n = 0   # Column
@@ -79,13 +104,18 @@ def diagonal_counter(end_cnt):
 
 
 if __name__ == "__main__":
-    # matrix = np.zeros((300, 300))
-    # print(matrix)
-    #
-    # adjustment_array = generate_cosine_array(matrix, 2, 3)
-    # print(adjustment_array)
-    #
-    # plt.matshow(adjustment_array)
-    # plt.show()
-    for x in range(30):
-        diagonal_counter(x)
+    matrix = np.zeros((300, 300))
+    print(matrix)
+
+    adjustment_array = generate_cosine_array(matrix, 2, 3)
+    print(adjustment_array)
+    plt.matshow(adjustment_array)
+    plt.show()
+
+    adjustment_array = generate_sine_array(matrix, 2, 3)
+    print(adjustment_array)
+    plt.matshow(adjustment_array)
+    plt.show()
+
+    # for x in range(30):
+    #     diagonal_counter(x)
