@@ -305,7 +305,7 @@ def calculate_new_k_field_cosine_plane(h_matrix, k_matrix, obs_matrix):
         sine_array = generate_sine_array(k_matrix, m, n)
 
         # Apply cosine plane to perturbation array
-        test_scale_factors = [-0.001, 0, 0.001]
+        test_scale_factors = [-0.01, 0, 0.01]
         resulting_total_head_error = []
         for scale_factor in test_scale_factors:
             total_head_error = calculate_total_head_error(cosine_array, scale_factor, h_matrix, k_matrix, obs_matrix)
@@ -398,7 +398,7 @@ if __name__ == "__main__":
     print()
     print("Calculating k field...")
     start_time = time.time()
-    for run in range(256):
+    for run in range(16):
         k_field = calculate_new_k_field_cosine_plane(h_field, k_field, obs_field)
         h_field = laplace_smooth_iter(h_field, k_field)
     end_time = time.time()
