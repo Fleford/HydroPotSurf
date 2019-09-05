@@ -18,10 +18,11 @@ def shift_matrix(matrix, direction):
 
 k_field = np.loadtxt("InputFolder/k_field_tiny.txt")
 h_field_const = np.loadtxt("InputFolder/h_field_tiny.txt")
+k_field_width = k_field.shape[1]
 
 print(k_field)
 print(h_field_const)
-print()
+print(k_field_width)
 
 # Prepare k_vectors
 k_vector = k_field.reshape(1, -1)
@@ -41,7 +42,9 @@ print()
 
 laplace_operator_row = np.zeros_like(k_vector)
 print(laplace_operator_row)
-index = 0
+row, col = 0, 0
+index = row * k_field_width + col
+index_up = row * k_field_width + col
 
 
 
