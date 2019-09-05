@@ -371,7 +371,8 @@ def input_matrix_to_parameter_matrices(input_matrix):
 
 if __name__ == "__main__":
     # initial_input = np.loadtxt("InputFolder/initial_input.txt")
-    initial_input = np.loadtxt("InputFolder/output_array_1000.out")
+    initial_input = np.loadtxt("InputFolder/input_array.out")
+    # initial_input = np.loadtxt("InputFolder/output_array_1000.out")
     print(initial_input.shape)
 
     k_field, k_field_const_obs, obs_field, obs_mask, k_field_const_adj = input_matrix_to_parameter_matrices(initial_input)
@@ -389,6 +390,7 @@ if __name__ == "__main__":
     end_time = time.time()
     print()
     print("Seconds elapsed: " + str(end_time - start_time))
+    np.savetxt("h_field.txt", h_field)
     plt.matshow(k_field)
     plt.show()
     plt.matshow(h_field)
