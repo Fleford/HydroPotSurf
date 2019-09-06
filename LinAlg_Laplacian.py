@@ -17,24 +17,28 @@ def shift_matrix(matrix, direction):
 
 
 k_field = np.loadtxt("InputFolder/k_field_tiny.txt")
+k_field_abs = np.abs(k_field)
 h_field_const = np.loadtxt("InputFolder/h_field_tiny.txt")
 k_field_width = k_field.shape[1]
 k_field_height = k_field.shape[0]
 k_field_cnt = k_field_width * k_field_height
 
 print(k_field)
+print(k_field_abs)
 print(h_field_const)
 print(k_field_width)
 print(k_field_height)
 
 # Prepare k_vectors
-k_vector = k_field.reshape(1, -1)
-k_vector_up = shift_matrix(k_field, "up").reshape(1, -1)
-k_vector_down = shift_matrix(k_field, "down").reshape(1, -1)
-k_vector_left = shift_matrix(k_field, "left").reshape(1, -1)
-k_vector_right = shift_matrix(k_field, "right").reshape(1, -1)
+k_vector_signed = k_field.reshape(1, -1)
+k_vector = k_field_abs.reshape(1, -1)
+k_vector_up = shift_matrix(k_field_abs, "up").reshape(1, -1)
+k_vector_down = shift_matrix(k_field_abs, "down").reshape(1, -1)
+k_vector_left = shift_matrix(k_field_abs, "left").reshape(1, -1)
+k_vector_right = shift_matrix(k_field_abs, "right").reshape(1, -1)
 k_vector_sum = k_vector_up + k_vector_down + k_vector_left + k_vector_right
 
+print(k_vector_signed)
 print(k_vector)
 print(k_vector_up)
 print(k_vector_down)
@@ -43,30 +47,55 @@ print(k_vector_right)
 print(k_vector_sum)
 print()
 
-laplace_operator_row = np.zeros_like(k_vector)
-laplace_operator_matrix = laplace_operator_row.copy()   # Seed matrix with empty array
-row, col = 2, 0
-# Mark center cell
-index = row * k_field_width + col
-laplace_operator_row[0, index] = k_vector_sum[0, index]
-# Mark side cells
-if 0 <= (row + 1) <= (k_field_height - 1):
-    index_up = (row + 1) * k_field_width + col
-    laplace_operator_row[0, index_up] = - k_vector[0, index_up]
-if 0 <= (row - 1) <= (k_field_height - 1):
-    index_down = (row - 1) * k_field_width + col
-    laplace_operator_row[0, index_down] = - k_vector[0, index_down]
-if 0 <= (col - 1) <= (k_field_width - 1):
-    index_right = row * k_field_width + (col - 1)
-    laplace_operator_row[0, index_right] = - k_vector[0, index_right]
-if 0 <= (col + 1) <= (k_field_width - 1):
-    index_left = row * k_field_width + (col + 1)
-    laplace_operator_row[0, index_left] = - k_vector[0, index_left]
+# Prep laplace_operator_matrix
+laplace_operator_matrix = np.zeros_like(k_vector)  # Seed matrix with empty array
+for row in range(k_field_height):
+    for col in range(k_field_width):
+        # Prep a new row
+        laplace_operator_row = np.zeros_like(k_vector)
 
-laplace_operator_matrix = np.concatenate((laplace_operator_matrix, laplace_operator_row))
-laplace_operator_matrix = np.concatenate((laplace_operator_matrix, laplace_operator_row))
+        # Mark center cell
+        index = row * k_field_width + col
+        laplace_operator_row[0, index] = k_vector_sum[0, index]
+
+        # Mark side cells
+        if 0 <= (row + 1) <= (k_field_height - 1):
+            index_up = (row + 1) * k_field_width + col
+            laplace_operator_row[0, index_up] = - k_vector[0, index_up]
+        if 0 <= (row - 1) <= (k_field_height - 1):
+            index_down = (row - 1) * k_field_width + col
+            laplace_operator_row[0, index_down] = - k_vector[0, index_down]
+        if 0 <= (col - 1) <= (k_field_width - 1):
+            index_right = row * k_field_width + (col - 1)
+            laplace_operator_row[0, index_right] = - k_vector[0, index_right]
+        if 0 <= (col + 1) <= (k_field_width - 1):
+            index_left = row * k_field_width + (col + 1)
+            laplace_operator_row[0, index_left] = - k_vector[0, index_left]
+
+        # Append row to matrix
+        laplace_operator_matrix = np.concatenate((laplace_operator_matrix, laplace_operator_row))
 
 # Cut off empty top row
 laplace_operator_matrix = np.delete(laplace_operator_matrix, np.arange(k_field_cnt)).reshape(-1, k_field_cnt)
 
 print(laplace_operator_matrix)
+print()
+
+
+# Prep constant_head_matrix
+constant_head_matrix = np.zeros_like(k_vector)
+for cell in range(k_field_cnt):
+    if k_vector_signed[0, cell] == -1:
+        constant_head_row = np.zeros_like(k_vector)
+        constant_head_row[0, cell] = 1
+        constant_head_matrix = np.concatenate((constant_head_matrix, constant_head_row))
+# Cut off empty top row
+constant_head_matrix = np.delete(constant_head_matrix, np.arange(k_field_cnt)).reshape(-1, k_field_cnt)
+
+print(constant_head_matrix)
+print()
+
+
+# Build G matrix
+g_matrix = np.concatenate((laplace_operator_matrix, constant_head_matrix))
+print(g_matrix)
