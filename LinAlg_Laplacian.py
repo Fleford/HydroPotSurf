@@ -18,18 +18,17 @@ def shift_matrix(matrix, direction):
 
 k_field = np.loadtxt("InputFolder/k_field_tiny.txt")
 k_field_abs = np.abs(k_field)
-h_field_const = np.loadtxt("InputFolder/h_field_tiny.txt")
+h_field_initial = np.loadtxt("InputFolder/h_field_tiny.txt")
 k_field_width = k_field.shape[1]
 k_field_height = k_field.shape[0]
 k_field_cnt = k_field_width * k_field_height
 
 print(k_field)
 print(k_field_abs)
-print(h_field_const)
-print(k_field_width)
-print(k_field_height)
+print(h_field_initial)
+print()
 
-# Prepare k_vectors
+# Prepare k_vectors and h_vector
 k_vector_signed = k_field.reshape(1, -1)
 k_vector = k_field_abs.reshape(1, -1)
 k_vector_up = shift_matrix(k_field_abs, "up").reshape(1, -1)
@@ -37,6 +36,7 @@ k_vector_down = shift_matrix(k_field_abs, "down").reshape(1, -1)
 k_vector_left = shift_matrix(k_field_abs, "left").reshape(1, -1)
 k_vector_right = shift_matrix(k_field_abs, "right").reshape(1, -1)
 k_vector_sum = k_vector_up + k_vector_down + k_vector_left + k_vector_right
+h_vector = h_field_initial.reshape(1, -1)
 
 print(k_vector_signed)
 print(k_vector)
@@ -45,6 +45,7 @@ print(k_vector_down)
 print(k_vector_left)
 print(k_vector_right)
 print(k_vector_sum)
+print(h_vector)
 print()
 
 # Prep laplace_operator_matrix
@@ -82,20 +83,36 @@ print(laplace_operator_matrix)
 print()
 
 
-# Prep constant_head_matrix
-constant_head_matrix = np.zeros_like(k_vector)
+# Prep constant_head_A_matrix and constant_head_b_vector
+constant_head_A_matrix = np.zeros_like(k_vector)
+constant_head_b_vector = np.zeros((1, 1))
 for cell in range(k_field_cnt):
     if k_vector_signed[0, cell] == -1:
-        constant_head_row = np.zeros_like(k_vector)
-        constant_head_row[0, cell] = 1
-        constant_head_matrix = np.concatenate((constant_head_matrix, constant_head_row))
-# Cut off empty top row
-constant_head_matrix = np.delete(constant_head_matrix, np.arange(k_field_cnt)).reshape(-1, k_field_cnt)
+        constant_head_A_row = np.zeros_like(k_vector)
+        constant_head_A_row[0, cell] = 1
+        constant_head_A_matrix = np.concatenate((constant_head_A_matrix, constant_head_A_row))
 
-print(constant_head_matrix)
+        constant_head_b_row = np.array([[h_vector[0, cell]]])
+        constant_head_b_vector = np.concatenate((constant_head_b_vector, constant_head_b_row))
+
+# Cut off empty top rows
+constant_head_A_matrix = np.delete(constant_head_A_matrix, np.arange(k_field_cnt)).reshape(-1, k_field_cnt)
+constant_head_b_vector = np.delete(constant_head_b_vector, 0).reshape(-1, 1)
+
+print(constant_head_A_matrix)
+print(constant_head_b_vector)
 print()
 
 
-# Build G matrix
-g_matrix = np.concatenate((laplace_operator_matrix, constant_head_matrix))
-print(g_matrix)
+# Build A_matrix and b_vector (Ax=b)
+A_matrix = np.concatenate((laplace_operator_matrix, constant_head_A_matrix))
+print(A_matrix)
+
+zero_vector = np.zeros((k_field_cnt, 1))
+b_vector = np.concatenate((zero_vector, constant_head_b_vector))
+print(b_vector)
+print()
+
+# Solve for h_vector (x_vector)
+x, residuals, rank, s = np.linalg.lstsq(A_matrix, b_vector)
+print(x)
