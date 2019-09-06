@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.sparse.linalg import spsolve
 np.set_printoptions(linewidth=300)
 
 
@@ -94,5 +95,9 @@ for cell in range(k_field_cnt):
         constant_head_vector[cell, 0] = h_vector[0, cell]
 
 print(laplace_operator_matrix)
+print(laplace_operator_matrix.shape)
 print(constant_head_vector)
 print()
+
+h_vector_solved = spsolve(laplace_operator_matrix, constant_head_vector)
+print(h_vector_solved)
