@@ -100,4 +100,6 @@ print(constant_head_vector)
 print()
 
 h_vector_solved = spsolve(laplace_operator_matrix, constant_head_vector)
+h_field_solved = h_vector_solved.reshape(h_field_initial.shape)
 print(h_vector_solved)
+print(h_field_solved)
